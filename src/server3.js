@@ -145,9 +145,8 @@ io.on("connection", (socket) => {
         console.log(123123123);
         roomInfo = {
           users: [data.Id],
-          IdToSendingConnection: {},
-          IdToReceivingConnection: {},
-          IdToStream: {},
+          IdToStreams: {},
+          IdToConnections: {},
         };
         roomToUsers[data.roomId] = roomInfo;
       } else {
@@ -156,76 +155,6 @@ io.on("connection", (socket) => {
         roomInfo.users.push(data.Id);
       }
       console.log(2);
-      // 기존에 있ㄷ던 사람들한테 연결
-      roomInfo.users.forEach(async (Id) => {
-        try {
-          if (Id === data.Id) {
-            return;
-          }
-          let newReceivingConnection = new wrtc.RTCPeerConnection(RTC_config);
-
-          // iceForReceiving 연결하기
-          socket.on("iceForReceiving", async (t) => {
-            try {
-              if (
-                newReceivingConnection.remoteDescription != null &&
-                t.ice != null
-              ) {
-                await newReceivingConnection.addIceCandidate(t.ice);
-              }
-            } catch (e) {
-              console.log(e);
-            }
-          });
-
-          // 연결을 receiverId에 등록
-          if (roomInfo.IdToReceivingConnection[data.Id] === undefined) {
-            roomInfo.IdToReceivingConnection[data.Id] = [
-              {
-                senderId: Id,
-                connection: newReceivingConnection,
-              },
-            ];
-          } else {
-            roomInfo.IdToReceivingConnection[data.Id].push({
-              senderId: Id,
-              connection: newReceivingConnection,
-            });
-          }
-
-          // 연결에 트랙 연결
-          console.log("트랙연결할께요~!~!");
-          roomInfo.IdToStream[Id].getTracks().forEach((track) => {
-            newReceivingConnection.addTrack(track, roomInfo.IdToStream[Id]);
-          });
-          // roomInfo.IdToStream[data.Id].forEach((d) => {
-          //   newReceivingConnection.addTrack(d.track);
-          // });
-
-          // icecandidate 이벤트 리스너 설정
-          newReceivingConnection.addEventListener("icecandidate", (d) => {
-            console.log("ice for receiving이 오긴 하네요");
-            io.to(data.Id).emit("iceForReceiving", {
-              ice: d.candidate,
-              senderId: Id,
-            });
-          });
-          console.log("offer 보내라고!");
-
-          // offer 생성
-          const receivingOffer = await newReceivingConnection.createOffer({
-            offerToReceiveAudio: false,
-            offerToReceiveVideo: false,
-          });
-          await newReceivingConnection.setLocalDescription(receivingOffer);
-          io.to(data.Id).emit("offerForReceiving", {
-            offer: receivingOffer,
-            senderId: Id,
-          });
-        } catch (e) {
-          console.log(e);
-        }
-      });
 
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
@@ -234,95 +163,12 @@ io.on("connection", (socket) => {
       // ---------------- 추가 관리 필요 ---------------------
       // sendingConnection이 연결이 완료되면 발생하는 이벤트 => 다른 애들한테도 보내주기 위한 함수 생성.
       newSendingConnection.addEventListener("track", (connection) => {
-        if (!roomInfo.IdToStream.hasOwnProperty(data.Id)) {
-          // roomInfo.IdToStream[data.Id].push(connection.streams[0]);
-          roomInfo.IdToStream[data.Id] = 1;
-          return;
+        if (!roomInfo.IdToStreams.hasOwnProperty(data.Id)) {
+          roomInfo.IdToStream[data.Id] = connection.streams[0];
+        } else {
+          roomInfo.IdToStream.addTrack connection.streams[0];
         }
         console.log("sending 연결 완료");
-        roomInfo.IdToStream[data.Id] = connection.streams[0];
-
-        roomInfo.users.forEach(async (Id) => {
-          try {
-            if (Id != data.Id) {
-              // let newOffer = makeReceiveConnections(Id, data.Id, roomInfo);
-              //--------------------------------------------------------------
-              // 연결 생성
-              let newReceivingConnection = new wrtc.RTCPeerConnection(
-                RTC_config
-              );
-
-              // iceForReceiving 연결하기
-              socket.on("iceForReceiving", async (t) => {
-                try {
-                  if (
-                    newReceivingConnection.remoteDescription != null &&
-                    t.ice != null
-                  ) {
-                    await newReceivingConnection.addIceCandidate(t.ice);
-                  }
-                } catch (e) {
-                  console.log(e);
-                }
-              });
-
-              // 연결을 receiverId에 등록
-              if (roomInfo.IdToReceivingConnection[Id] === undefined) {
-                roomInfo.IdToReceivingConnection[Id] = [
-                  {
-                    senderId: data.Id,
-                    connection: newReceivingConnection,
-                  },
-                ];
-              } else {
-                roomInfo.IdToReceivingConnection[Id].push({
-                  senderId: data.Id,
-                  connection: newReceivingConnection,
-                });
-              }
-
-              // 연결에 트랙 연결
-              console.log("트랙연결할께요~!~!");
-              roomInfo.IdToStream[data.Id].getTracks().forEach((track) => {
-                newReceivingConnection.addTrack(
-                  track,
-                  roomInfo.IdToStream[data.Id]
-                );
-              });
-              // roomInfo.IdToStream[data.Id].forEach((d) => {
-              //   newReceivingConnection.addTrack(d.track);
-              // });
-              // icecandidate 이벤트 리스너 설정
-              newReceivingConnection.onicecandidate = (d) => {
-                console.log("ice for candidate가 오긴 하네요");
-                // setTimeout(() => {
-                //   io.to(Id).emit("iceForReceiving", {
-                //     ice: d.candidate,
-                //     senderId: data.Id,
-                //   });
-                // }, 5000);
-                io.to(Id).emit("iceForReceiving", {
-                  ice: d.candidate,
-                  senderId: data.Id,
-                });
-              };
-
-              // offer 생성
-              const receivingOffer = await newReceivingConnection.createOffer({
-                offerToReceiveAudio: false,
-                offerToReceiveVideo: false,
-              });
-              await newReceivingConnection.setLocalDescription(receivingOffer);
-              console.log("여기요~~~~");
-              io.to(Id).emit("offerForReceiving", {
-                offer: receivingOffer,
-                senderId: data.Id,
-              });
-            }
-          } catch (e) {
-            console.log(e);
-          }
-        });
       });
       // console.log(data, 11111111111111111111111);
       console.log(data.sendingOffer);
