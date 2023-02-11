@@ -303,10 +303,11 @@ socket.on("offerForReceiving", async (data) => {
     socket.on("iceForReceiving", async (d) => {
       try {
         //-------------------수정한부분----------------------
-        const candidate = d.ice ? new RTCIceCandidate(d.ice) : d.ice;
-        await newReceivingConnection.addIceCandidate(candidate);
-        console.log("ice for receiving 받았습니다11111!");
-        await newReceivingConnection.addIceCandidate(d.ice);
+        // const candidate = d.ice ? new RTCIceCandidate(d.ice) : d.ice;
+        if (d.ice != null) {
+          console.log("ice for receiving 받았습니다11111!");
+          await newReceivingConnection.addIceCandidate(d.ice);
+        }
       } catch (e) {
         console.log(e);
       }
@@ -435,6 +436,9 @@ async function makeSendingConection() {
         console.log("i got sending Ice and sent to server");
       }
     });
+    // sendingConnection.addEventListener("negotiationneeded", () => {
+    //   socket.emit()
+    // })
 
     // 내가 받을 때만 의미가 있는 이벤트 리스너라 일단 비활성
     sendingConnection.addEventListener("track", (w) => {
