@@ -50,7 +50,13 @@ const RTC_config = {
       ],
       username: "choongil",
       credential: "Lee",
-      iceCandidatePoolSize: 100,
+      // iceCandidatePoolSize: 100,
+    },
+    {
+      urls: ["stun:3.38.151.56", "turn:3.38.151.56:3478?transport=udp"],
+      username: "choongil",
+      credential: "Lee",
+      // iceCandidatePoolSize: 100,
     },
     // { urls: "stun:stun01.sipphone.com" },
     // { urls: "stun:stun.ekiga.net" },
@@ -293,62 +299,74 @@ socket.on("iceForSending", async (data) => {
   }
 });
 
+socket.on("iceForReceiving", async (d) => {
+  try {
+    //-------------------수정한부분----------------------
+    // const candidate = d.ice ? new RTCIceCandidate(d.ice) : d.ice;
+    if (d.ice != null && IdToReceivingConnection[d.senderId]) {
+      console.log("ice for receiving 받았습니다11111!");
+
+      await IdToReceivingConnection[d.senderId].connection.addIceCandidate(
+        d.ice
+      );
+    }
+  } catch (e) {
+    console.log(e);
+  }
+});
+
+socket.on("makeNewPeer", (data) => {
+  console.log("여기와줘~~~~~~~~~~~~~~");
+  let newReceivingConnection = new RTCPeerConnection(RTC_config);
+  let i = 0;
+  while (i < 4) {
+    if (videos[i].isConnected === false) {
+      videos[i].isConnected = true;
+      IdToReceivingConnection[data.senderId] = {
+        videoTag: videos[i].videoTag,
+        connection: newReceivingConnection,
+      };
+      console.log("비디오 찾음");
+      break;
+    }
+    i++;
+  }
+  newReceivingConnection.addEventListener("icecandidate", (e) => {
+    if (e.candidate != null) {
+      console.log("receiving ice 보낼께요~~");
+      socket.emit("iceForReceiving", {
+        ice: e.candidate,
+        receiverId: socket.id,
+        senderId: data.senderId,
+        roomId,
+      });
+    }
+  });
+  newReceivingConnection.addEventListener("track", (a) => {
+    console.log(a);
+    console.log(a.streams[0].getTracks());
+    console.log(a.streams[0].id);
+    IdToReceivingConnection[data.senderId].videoTag.srcObject = a.streams[0];
+    console.log("receivingConnection finished");
+  });
+});
+
 socket.on("offerForReceiving", async (data) => {
   try {
+    let newReceivingConnection =
+      IdToReceivingConnection[data.senderId].connection;
+
     console.log("offerForReceiving 받음");
     //receivingConnection 생성
-    let newReceivingConnection = new RTCPeerConnection(RTC_config);
 
     // iceForReceiving을 받았을 때 해당 ice를 등록
-    socket.on("iceForReceiving", async (d) => {
-      try {
-        //-------------------수정한부분----------------------
-        // const candidate = d.ice ? new RTCIceCandidate(d.ice) : d.ice;
-        if (d.ice != null) {
-          console.log("ice for receiving 받았습니다11111!");
-          await newReceivingConnection.addIceCandidate(d.ice);
-        }
-      } catch (e) {
-        console.log(e);
-      }
-    });
     console.log("receiving 연결 만들께요~!");
     // connection을 비디오 태그와 엮어서 보관 객체에 추가
-    let i = 0;
-    while (i < 4) {
-      if (videos[i].isConnected === false) {
-        videos[i].isConnected = true;
-        IdToReceivingConnection[data.senderId] = {
-          videoTag: videos[i].videoTag,
-          connection: newReceivingConnection,
-        };
-
-        console.log("비디오 찾음");
-        break;
-      }
-      i++;
-    }
 
     // icecandidate가 왔을 떄 이벤트 리스너 장창
-    newReceivingConnection.addEventListener("icecandidate", (e) => {
-      if (e.candidate != null) {
-        console.log("receiving ice 보낼께요~~");
-        socket.emit("iceForReceiving", {
-          ice: e.candidate,
-          receiverId: socket.id,
-          senderId: data.senderId,
-          roomId,
-        });
-      }
-    });
 
     console.log("여기");
     // 연결이 완료되었을 때 이벤트 리스너 장착 -> 비디오에 연결
-    newReceivingConnection.addEventListener("track", (a) => {
-      console.log(a);
-      IdToReceivingConnection[data.senderId].videoTag.srcObject = a.streams[0];
-      console.log("receivingConnection finished");
-    });
     // 연결의 remote description을 받은 offer로 설정
     await newReceivingConnection.setRemoteDescription(data.offer);
 

@@ -30,19 +30,6 @@ const RTC_config = {
     { urls: "stun:stun2.l.google.com:19302" },
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
-    // {
-    //   urls: "stun:13.125.11.187:3478",
-    //   username: "choongil",
-    //   credential: "Lee",
-    //   // iceCandidatePoolSize: 10,
-    // },
-    // {
-    //   urls: "turn:13.125.11.187:3478?transport=udp",
-
-    //   username: "choongil",
-    //   credential: "Lee",
-    //   iceCandidatePoolSize: 10,
-    // },
     {
       urls: [
         "stun:13.125.11.187:3478",
@@ -50,60 +37,21 @@ const RTC_config = {
       ],
       username: "choongil",
       credential: "Lee",
-      iceCandidatePoolSize: 100,
+      // iceCandidatePoolSize: 100,
     },
-    // { urls: "stun:stun01.sipphone.com" },
-    // { urls: "stun:stun.ekiga.net" },
-    // { urls: "stun:stun.fwdnet.net" },
-    // { urls: "stun:stun.ideasip.com" },
-    // { urls: "stun:stun.iptel.org" },
-    // { urls: "stun:stun.rixtelecom.se" },
-    // { urls: "stun:stun.schlund.de" },
-    // { urls: "stun:stunserver.org" },
-    // { urls: "stun:stun.softjoys.com" },
-    // { urls: "stun:stun.voiparound.com" },
-    // { urls: "stun:stun.voipbuster.com" },
-    // { urls: "stun:stun.voipstunt.com" },
-    // { urls: "stun:stun.voxgratia.org" },
-    // { urls: "stun:stun.xten.com" },
+    {
+      urls: ["stun:3.38.151.56", "turn:3.38.151.56:3478?transport=udp"],
+      username: "choongil",
+      credential: "Lee",
+      // iceCandidatePoolSize: 100,
+    },
   ],
 };
-// const RTC_config = {
-//   iceServers: [
-//     // {
-//     //   urls: 'stun:[STUN_IP]:[PORT]',
-//     //   'credentials': '[YOR CREDENTIALS]',
-//     //   'username': '[USERNAME]'
-//     // },
-//     {
-//       urls: [
-//         "stun:stun.l.google.com:19302",
-//         "stun:stun2.l.google.com:19302",
-//         "stun:stun3.l.google.com:19302",
-//         "stun:stun4.l.google.com:19302",
-//         "stun:stun01.sipphone.com",
-//         "stun:stun.ekiga.net",
-//         "stun:stun.fwdnet.net",
-//         "stun:stun.ideasip.com",
-//         "stun:stun.iptel.org",
-//         "stun:stun.rixtelecom.se",
-//         "stun:stun.schlund.de",
-//         "stun:stunserver.org",
-//         "stun:stun.softjoys.com",
-//         "stun:stun.voiparound.com",
-//         "stun:stun.voipbuster.com",
-//         "stun:stun.voipstunt.com",
-//         "stun:stun.voxgratia.org",
-//         "stun:stun.xten.com",
-//       ],
-//       iceCandidatePoolSize: 10,
-//     },
-//   ],
-// };
 
 // 내 비디오가 송출되는 태그
 const myFace = document.getElementById("myFace");
 
+// 친구들 얼굴이 송출되는 태그
 const peersFace1 = document.getElementById("peersFace1");
 const peersFace2 = document.getElementById("peersFace2");
 const peersFace3 = document.getElementById("peersFace3");
@@ -129,8 +77,12 @@ const videos = [
   },
 ];
 
-// 송신자의 socketId를 키값으로 {videoIdx, receivingConnection}를 관리
-let IdToReceivingConnection = {};
+// streamId to user
+let streamIdToUser = {};
+
+// userId to streamId & video
+let userInfo = {};
+
 // 내 stream을 송출하기 위한 connection
 let sendingConnection;
 
@@ -165,11 +117,21 @@ async function getCameras() {
 async function getMedia(deviceId) {
   const initialConstrains = {
     audio: true,
-    video: { facingMode: "user" },
+    video: {
+      width: 320,
+      height: 240,
+      frameRate: { max: 14 },
+      facingMode: "user",
+    },
   };
   const cameraConstraints = {
     audio: true,
-    video: { deviceId: { exact: deviceId } },
+    video: {
+      width: 320,
+      height: 240,
+      frameRate: { max: 14 },
+      deviceId: { exact: deviceId },
+    },
   };
   try {
     // 유저의 유저미디어의 stream을 주는 api
@@ -177,7 +139,9 @@ async function getMedia(deviceId) {
       deviceId ? cameraConstraints : initialConstrains
     );
     // console.log(deviceId);
-    myFace.srcObject = myStream;
+    let myVideo = new MediaStream();
+    myVideo.addTrack(myStream.getVideoTracks()[0]);
+    myFace.srcObject = myVideo;
     if (!deviceId) {
       await getCameras();
     }
@@ -217,9 +181,9 @@ function handleCameraBtn() {
 // 카메라 전환 버튼
 async function handleCameraChange() {
   await getMedia(cameraSelect.value);
-  if (myPeerConnection) {
+  if (sendingConnection) {
     const videoTrack = myStream.getVideoTracks()[0];
-    const videoSender = myPeerConnection
+    const videoSender = sendingConnection
       .getSenders()
       .find((sender) => sender.track.kind === "video");
     videoSender.replaceTrack(videoTrack);
@@ -246,8 +210,7 @@ async function startMedia() {
   call.hidden = false;
   // 미디어를 셋팅하고 peer to peer 연결을 시작해야 하므로 promise함수가 섞인 getMedia()를 await으로 기다린다.
   await getMedia();
-  const offer = await makeSendingConection();
-  return offer;
+  await makeSendingConection();
 }
 
 // 방에 입장할 때 입장 코드를 입력, 전송하는 함수
@@ -256,19 +219,15 @@ const welcomeForm = welcome.querySelector("form");
 async function handleWelcomeSubmit(event) {
   event.preventDefault();
   const input = welcomeForm.querySelector("input");
-  const sendingOffer = await startMedia();
-  let data = {
-    roomId: input.value,
-    sendingOffer,
-    Id: socket.id,
-  };
-  socket.emit("joinRoom", {
-    roomId: input.value,
-    sendingOffer: sendingOffer,
-    Id: socket.id,
-  });
   roomId = input.value;
   input.value = "";
+  await startMedia();
+  // await startMedia();
+  // let data = {
+  //   roomId: input.value,
+  //   sendingOffer,
+  //   Id: socket.id,
+  // };
 }
 welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 // -------------------------------------------------------
@@ -278,7 +237,6 @@ welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 // 서버에서 sendingConnection에 대한 answer을 주는 소켓
 socket.on("welcome", async (answer) => {
   try {
-    console.log("나왔어~~");
     await sendingConnection.setRemoteDescription(answer);
     console.log("answer입력완료");
   } catch (e) {
@@ -290,6 +248,74 @@ socket.on("iceForSending", async (data) => {
   if (sendingConnection.remoteDescription != null) {
     console.log("i got ice for sending!");
     await sendingConnection.addIceCandidate(data.ice);
+  }
+});
+
+// 새로운 사용자 들어왔을 때 실행되는 소캣
+socket.on("makeNewPeer", (data) => {
+  // console.log(data.streamId);
+  console.log("새로운 친구가 왔을 때 사용되는 소캣");
+  streamIdToUser[data.streamId] = data.senderId;
+  userInfo[data.senderId] = {};
+  userInfo[data.senderId].streamId = data.streamId;
+  let i = 0;
+  while (i < 4) {
+    if (videos[i].isConnected === false) {
+      videos[i].isConnected = true;
+      userInfo[data.senderId].video = videos[i];
+      break;
+    }
+    i++;
+  }
+  socket.emit("readyForGettingStream", {
+    roomId,
+    receiverId: socket.id,
+    senderId: data.senderId,
+  });
+});
+
+// 서버가 보낸 nego 요청
+socket.on("handleNegotiation", async (data) => {
+  try {
+    sendingConnection.setRemoteDescription(data.offer);
+    let answer = await sendingConnection.createAnswer();
+    await sendingConnection.setLocalDescription(answer);
+    socket.emit("answerForNegotiation", {
+      roomId,
+      answer,
+      receiverId: socket.id,
+    });
+  } catch (e) {
+    console.log(e);
+  }
+});
+
+// 서버가 보낸 다른사람의 재연결 정보
+socket.on("someoneReconnected", (data) => {
+  streamIdToUser[data.streamId] = data.senderId;
+  userInfo[data.senderId].streamId = data.streamId;
+  socket.emit("readyForGettingStream", {
+    roomId,
+    receiverId: socket.id,
+    senderId: data.senderId,
+  });
+});
+
+// 누군가 나갔음을 알리는 소캣
+socket.on("someoneLeft", (data) => {
+  console.log(data.senderId);
+  userInfo[data.senderId].video.isConnected = false;
+  userInfo[data.senderId].video.videoTag.srcObject = null;
+  streamIdToUser[userInfo[data.senderId].streamId] = null;
+  userInfo[data.senderId].streamId = null;
+});
+
+// 내가 보낸 negotiation의 서버로부터 온 답장
+socket.on("answerForNegotiation", async (data) => {
+  try {
+    await sendingConnection.setRemoteDescription(data.answer);
+  } catch (e) {
+    console.log(e);
   }
 });
 
@@ -310,29 +336,98 @@ async function makeSendingConection() {
       }
     });
 
+    sendingConnection.addEventListener("connectionstatechange", (unused) => {
+      if (sendingConnection.connectionState === "disconnected") {
+        sendingConnection.close();
+        makeNewConnection();
+      }
+    });
+
+    // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
+    // sendingConnection.addEventListener("iceconnectionstatechange", (event) => {
+    //   if (sendingConnection.iceConnectionState === "failed") {
+    //     sendingConnection.restartIce();
+    //   }
+    // });
+
     // 내가 받을 때만 의미가 있는 이벤트 리스너라 일단 비활성
-    sendingConnection.addEventListener("track", (w) => {
-      console.log("서버랑 sendingConnection 연결 완료!");
+    sendingConnection.addEventListener("track", (data) => {
+      console.log("트랙이벤트 발생");
+      // console.log(data, data.streams[0].id);
+      let userId = streamIdToUser[data.streams[0].id];
+      userInfo[userId].video.videoTag.srcObject = data.streams[0];
     });
 
     // 스트림 내에 모든 트랙들을 접근하는 함수를 이용하여 myPeercon
     myStream.getTracks().forEach((track) => {
       sendingConnection.addTrack(track, myStream);
     });
+
     // SendingConnection을 위한 offer 생성 후 서버에 전달
     const sendingOffer = await sendingConnection.createOffer();
     await sendingConnection.setLocalDescription(sendingOffer);
-    return sendingOffer;
+    socket.emit("joinRoom", {
+      roomId,
+      sendingOffer: sendingOffer,
+      Id: socket.id,
+    });
   } catch (e) {
     console.log(e);
   }
 }
 
-//----------------------------------------------------------
+// 연결이 disconnected되었을 떄 실행되는 함수 : 새로운 연결 생성
+async function makeNewConnection() {
+  try {
+    console.log("새로 연결 시도!");
+    sendingConnection = new RTCPeerConnection(RTC_config);
+    sendingConnection.addEventListener("icecandidate", (data) => {
+      if (data.candidate != null) {
+        socket.emit("iceForSending", {
+          ice: data.candidate,
+          Id: socket.id,
+          roomId,
+        });
+        console.log("i got sending Ice and sent to server");
+      }
+    });
 
-// // peer의 data stream을 받아서 비디오의 srcObject에 넣어주는 모습
-// function handleAddStream(data) {
-//   console.log(data);
-//   peersVideo.srcObject = data.streams[0];
-//   console.log("got an event from my peer");
-// }
+    sendingConnection.addEventListener("connectionstatechange", (unused) => {
+      if (sendingConnection.connectionState === "disconnected") {
+        sendingConnection.close();
+        makeNewConnection();
+      }
+    });
+
+    // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
+    // sendingConnection.addEventListener("iceconnectionstatechange", (event) => {
+    //   if (sendingConnection.iceConnectionState === "failed") {
+    //     sendingConnection.restartIce();
+    //   }
+    // });
+
+    // 내가 받을 때만 의미가 있는 이벤트 리스너라 일단 비활성
+    sendingConnection.addEventListener("track", (data) => {
+      console.log("트랙이벤트 발생");
+      // console.log(data, data.streams[0].id);
+      let userId = streamIdToUser[data.streams[0].id];
+      userInfo[userId].video.videoTag.srcObject = data.streams[0];
+    });
+
+    // 스트림 내에 모든 트랙들을 접근하는 함수를 이용하여 myPeercon
+    myStream.getTracks().forEach((track) => {
+      sendingConnection.addTrack(track, myStream);
+    });
+
+    // SendingConnection을 위한 offer 생성 후 서버에 전달
+    const sendingOffer = await sendingConnection.createOffer();
+    await sendingConnection.setLocalDescription(sendingOffer);
+    socket.emit("reconnectOffer", {
+      roomId,
+      sendingOffer: sendingOffer,
+      Id: socket.id,
+    });
+  } catch (e) {
+    console.log(e);
+  }
+}

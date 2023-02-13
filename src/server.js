@@ -7,29 +7,11 @@ const app = express();
 const httpServer = http.createServer(app);
 app.use(cors());
 
-//--------------------------------
-// const https = require("https");
-// const fs = require("fs");
-// const options = {
-//   key: fs.readFileSync("../localhost-key.pem"),
-//   cert: fs.readFileSync("../localhost.pem"),
-// };
-// https
-//   .createServer(options, function (req, res) {
-//     // server code
-//   })
-//   .listen({ PORT });
-
 //--------------------- webRTC ---------------------
 const wrtc = require("wrtc");
 
 const RTC_config = {
   iceServers: [
-    // {
-    //   urls: 'stun:[STUN_IP]:[PORT]',
-    //   'credentials': '[YOR CREDENTIALS]',
-    //   'username': '[USERNAME]'
-    // },
     {
       urls: "stun:stun.l.google.com:19302",
     },
@@ -43,66 +25,16 @@ const RTC_config = {
       ],
       username: "choongil",
       credential: "Lee",
-      iceCandidatePoolSize: 1000,
+      // iceCandidatePoolSize: 100,
     },
-    // {
-    //   urls: "turn:13.125.11.187:3478?transport=udp",
-
-    //   username: "choongil",
-    //   credential: "Lee",
-    //   // iceCandidatePoolSize: 10,
-    // },
-    // { urls: "stun:stun01.sipphone.com" },
-    // { urls: "stun:stun.ekiga.net" },
-    // { urls: "stun:stun.fwdnet.net" },
-    // { urls: "stun:stun.ideasip.com" },
-    // { urls: "stun:stun.iptel.org" },
-    // { urls: "stun:stun.rixtelecom.se" },
-    // { urls: "stun:stun.schlund.de" },
-    // { urls: "stun:stunserver.org" },
-    // { urls: "stun:stun.softjoys.com" },
-    // { urls: "stun:stun.voiparound.com" },
-    // { urls: "stun:stun.voipbuster.com" },
-    // { urls: "stun:stun.voipstunt.com" },
-    // { urls: "stun:stun.voxgratia.org" },
-    // { urls: "stun:stun.xten.com" },
+    {
+      urls: ["stun:3.38.151.56", "turn:3.38.151.56:3478?transport=udp"],
+      username: "choongil",
+      credential: "Lee",
+      // iceCandidatePoolSize: 100,
+    },
   ],
 };
-// const RTC_config = {
-//   iceServers: [
-//     // {
-//     //   urls: 'stun:[STUN_IP]:[PORT]',
-//     //   'credentials': '[YOR CREDENTIALS]',
-//     //   'username': '[USERNAME]'
-//     // },
-//     {
-//       urls: [
-//         "stun:stun.l.google.com:19302",
-//         "stun:stun2.l.google.com:19302",
-//         "stun:stun3.l.google.com:19302",
-//         "stun:stun4.l.google.com:19302",
-//         "stun:stun01.sipphone.com",
-//         "stun:stun.ekiga.net",
-//         "stun:stun.fwdnet.net",
-//         "stun:stun.ideasip.com",
-//         "stun:stun.iptel.org",
-//         "stun:stun.rixtelecom.se",
-//         "stun:stun.schlund.de",
-//         "stun:stunserver.org",
-//         "stun:stun.softjoys.com",
-//         "stun:stun.voiparound.com",
-//         "stun:stun.voipbuster.com",
-//         "stun:stun.voipstunt.com",
-//         "stun:stun.voxgratia.org",
-//         "stun:stun.xten.com",
-//       ],
-//       iceCandidatePoolSize: 10,
-//     },
-//   ],
-// };
-
-// const pc = new wrtc.RTCPeerConnection(pc_config);
-/////////////////////////////////////////////////////////////
 
 app.set("view engine", "pug");
 app.set("views", __dirname + "/views");
@@ -112,11 +44,13 @@ app.get("/2", (req, res) => res.render("home"));
 
 app.get("/*", (req, res) => res.redirect("/"));
 const handleListen = () => console.log("server start port 3000");
-// httpServer.listen(3000, handleListen);
 
 // DB에 존재하는 자료형 roomId를 입력하면
 // users, IdToSendingconnection, IdToRecevingConnection을 담은 객체 리턴
 let roomToUsers = {};
+
+// socketId to roomId
+let socketIdToRoomId = {};
 
 // user들의 ID 나열
 let users = [];
@@ -127,239 +61,223 @@ let IdToStream = {};
 // Id가 키값으로 sendingConnection에 매칭(연결에 직접 매칭)
 let IdToSendingConnection = {};
 
-// Id가 키값으로 sendingConnection들에 매칭(매칭되는 리스트 존재)
-let IdToReceivingConnection = {};
-
-const isIncluded = (array, id) => array.some((item) => item.id === id);
-
 const io = socketio(httpServer);
 io.on("connection", (socket) => {
+  socket.on("disconnect", () => {
+    // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
+    if (socket.name === undefined) {
+      return;
+    }
+    // 연결이 끊어졌을 때
+
+    // 다른 연결들에 전송되고있는 스트림 제거
+    console.log(socket.name + " 나갔어요~");
+    let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
+    let removingStream = roominfo.IdToStream[socket.name];
+    roominfo.users.forEach((Id) => {
+      if (Id != socket.name) {
+        removingStream.getTracks().forEach((track) => {
+          let removingTrackId = track.id;
+          let removingSender = roominfo.IdToSendingConnection[
+            Id
+          ].getSenders().find((s) => {
+            console.log(s, s.track);
+            return s.track != null && s.track.id === removingTrackId;
+          });
+          roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
+        });
+        io.to(Id).emit("someoneLeft", { senderId: socket.name });
+      }
+    });
+
+    // 연결 끊기
+    roominfo.IdToSendingConnection[socket.name].close();
+
+    // 방 내부 데이터에서 제거하기
+    roominfo.IdToStream[socket.name] = null;
+    roominfo.IdToSender[socket.name] = null;
+    roominfo.IdToSendingConnection[socket.name] = null;
+    for (let i = 0; i < 5; i++) {
+      if (roominfo.users[i] === socket.name) {
+        roominfo.users.splice(i, 1);
+        break;
+      }
+    }
+
+    // roomToUsers[socketIdToRoomId[socket.id]].IdToStream[socket.id]=
+    // peer들에게 나갔다는 사실 알리기
+
+    // let myPeers = roomToUsers[socketIdToRoomId[socket.id]].users
+    // socket.to( ).emit()
+  });
   // Room에 입장한 친구를 room에 넣고 sendingConnection의 offer로 연결 시작
   socket.on("joinRoom", async (data) => {
     try {
-      console.log(1);
+      socket.name = data.Id;
       socket.join(data.roomId);
+      socketIdToRoomId[data.Id] = data.roomId;
       // 이미 존재하는 방이 아니라면
       let roomInfo;
       if (!roomToUsers.hasOwnProperty(data.roomId)) {
-        console.log(123123123);
         roomInfo = {
           users: [data.Id],
           IdToSendingConnection: {},
-          IdToReceivingConnection: {},
           IdToStream: {},
+          IdToSender: {},
         };
         roomToUsers[data.roomId] = roomInfo;
       } else {
-        console.log(2);
+        // console.log(2);
         roomInfo = roomToUsers[data.roomId];
         roomInfo.users.push(data.Id);
       }
-      console.log(2);
-      // 기존에 있ㄷ던 사람들한테 연결
-      roomInfo.users.forEach(async (Id) => {
-        try {
-          if (Id === data.Id) {
-            return;
-          }
-          let newReceivingConnection = new wrtc.RTCPeerConnection(RTC_config);
-
-          // iceForReceiving 연결하기
-          socket.on("iceForReceiving", async (t) => {
-            try {
-              if (
-                newReceivingConnection.remoteDescription != null &&
-                t.ice != null
-              ) {
-                await newReceivingConnection.addIceCandidate(t.ice);
-              }
-            } catch (e) {
-              console.log(e);
-            }
-          });
-
-          // 연결을 receiverId에 등록
-          if (roomInfo.IdToReceivingConnection[data.Id] === undefined) {
-            roomInfo.IdToReceivingConnection[data.Id] = [
-              {
-                senderId: Id,
-                connection: newReceivingConnection,
-              },
-            ];
-          } else {
-            roomInfo.IdToReceivingConnection[data.Id].push({
-              senderId: Id,
-              connection: newReceivingConnection,
-            });
-          }
-
-          // 연결에 트랙 연결
-          console.log("트랙연결할께요~!~!");
-          roomInfo.IdToStream[Id].getTracks().forEach((track) => {
-            newReceivingConnection.addTrack(track, roomInfo.IdToStream[Id]);
-          });
-          // roomInfo.IdToStream[data.Id].forEach((d) => {
-          //   newReceivingConnection.addTrack(d.track);
-          // });
-
-          // icecandidate 이벤트 리스너 설정
-          newReceivingConnection.addEventListener("icecandidate", (d) => {
-            console.log("ice for receiving이 오긴 하네요");
-            io.to(data.Id).emit("iceForReceiving", {
-              ice: d.candidate,
-              senderId: Id,
-            });
-          });
-          console.log("offer 보내라고!");
-
-          // offer 생성
-          const receivingOffer = await newReceivingConnection.createOffer({
-            offerToReceiveAudio: false,
-            offerToReceiveVideo: false,
-          });
-          await newReceivingConnection.setLocalDescription(receivingOffer);
-          io.to(data.Id).emit("offerForReceiving", {
-            offer: receivingOffer,
-            senderId: Id,
-          });
-        } catch (e) {
-          console.log(e);
-        }
-      });
 
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
 
-      console.log(3);
+      // console.log(3);
       // ---------------- 추가 관리 필요 ---------------------
       // sendingConnection이 연결이 완료되면 발생하는 이벤트 => 다른 애들한테도 보내주기 위한 함수 생성.
       newSendingConnection.addEventListener("track", (connection) => {
-        if (!roomInfo.IdToStream.hasOwnProperty(data.Id)) {
+        if (roomInfo.IdToStream[data.Id] != 1) {
           // roomInfo.IdToStream[data.Id].push(connection.streams[0]);
           roomInfo.IdToStream[data.Id] = 1;
           return;
         }
+        console.log("connection for" + data.Id + "is finished");
         console.log("sending 연결 완료");
         roomInfo.IdToStream[data.Id] = connection.streams[0];
 
-        roomInfo.users.forEach(async (Id) => {
-          try {
-            if (Id != data.Id) {
-              // let newOffer = makeReceiveConnections(Id, data.Id, roomInfo);
-              //--------------------------------------------------------------
-              // 연결 생성
-              let newReceivingConnection = new wrtc.RTCPeerConnection(
-                RTC_config
-              );
+        roomInfo.users.forEach((Id) => {
+          if (Id != data.Id) {
+            //-------------------------- 새로운 피어의 연결이 완료되었을 떄 무엇을 할 것인가------
 
-              // iceForReceiving 연결하기
-              socket.on("iceForReceiving", async (t) => {
-                try {
-                  if (
-                    newReceivingConnection.remoteDescription != null &&
-                    t.ice != null
-                  ) {
-                    await newReceivingConnection.addIceCandidate(t.ice);
-                  }
-                } catch (e) {
-                  console.log(e);
-                }
-              });
+            // 기존에 있던 사람들에게 새로온 사람의 streamId와 userId를 제공
+            io.to(Id).emit("makeNewPeer", {
+              senderId: data.Id,
+              streamId: connection.streams[0].id,
+            });
 
-              // 연결을 receiverId에 등록
-              if (roomInfo.IdToReceivingConnection[Id] === undefined) {
-                roomInfo.IdToReceivingConnection[Id] = [
-                  {
-                    senderId: data.Id,
-                    connection: newReceivingConnection,
-                  },
-                ];
-              } else {
-                roomInfo.IdToReceivingConnection[Id].push({
-                  senderId: data.Id,
-                  connection: newReceivingConnection,
-                });
-              }
-
-              // 연결에 트랙 연결
-              console.log("트랙연결할께요~!~!");
-              roomInfo.IdToStream[data.Id].getTracks().forEach((track) => {
-                newReceivingConnection.addTrack(
-                  track,
-                  roomInfo.IdToStream[data.Id]
-                );
-              });
-              // roomInfo.IdToStream[data.Id].forEach((d) => {
-              //   newReceivingConnection.addTrack(d.track);
-              // });
-              // icecandidate 이벤트 리스너 설정
-              newReceivingConnection.onicecandidate = (d) => {
-                console.log("ice for candidate가 오긴 하네요");
-                // setTimeout(() => {
-                //   io.to(Id).emit("iceForReceiving", {
-                //     ice: d.candidate,
-                //     senderId: data.Id,
-                //   });
-                // }, 5000);
-                io.to(Id).emit("iceForReceiving", {
-                  ice: d.candidate,
-                  senderId: data.Id,
-                });
-              };
-
-              // offer 생성
-              const receivingOffer = await newReceivingConnection.createOffer({
-                offerToReceiveAudio: false,
-                offerToReceiveVideo: false,
-              });
-              await newReceivingConnection.setLocalDescription(receivingOffer);
-              console.log("여기요~~~~");
-              io.to(Id).emit("offerForReceiving", {
-                offer: receivingOffer,
-                senderId: data.Id,
-              });
-            }
-          } catch (e) {
-            console.log(e);
+            // 새로온 사람에게 기존에 있던 사람들의 streamId와 userId르 제공
+            io.to(data.Id).emit("makeNewPeer", {
+              senderId: Id,
+              streamId: roomInfo.IdToStream[Id].id,
+            });
           }
         });
       });
-      // console.log(data, 11111111111111111111111);
-      console.log(data.sendingOffer);
       await newSendingConnection.setRemoteDescription(data.sendingOffer);
-      console.log(4);
-      let answer = await newSendingConnection.createAnswer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
-      console.log(5);
+      let answer = await newSendingConnection.createAnswer();
       await newSendingConnection.setLocalDescription(answer);
       roomInfo.IdToSendingConnection[data.Id] = newSendingConnection;
 
-      // --------------------
-      // console.log(roomInfo.IdToSendingConnection[data.Id], 1111111111111);
+      // 서버가 negotiation이 필요할 때
+
+      newSendingConnection.addEventListener(
+        "negotiationneeded",
+        async (unused) => {
+          try {
+            console.log("설마 네고?");
+            let newOffer = await newSendingConnection.createOffer();
+            await newSendingConnection.setLocalDescription(newOffer);
+            io.to(data.Id).emit("handleNegotiation", { offer: newOffer });
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      );
+
+      // 연결의 상태가 변화하였을 때 연결을 close하는 이벤트 리스너
+      newSendingConnection.addEventListener(
+        "connectionstatechange",
+        (unused) => {
+          switch (newSendingConnection.connectionState) {
+            case "disconnected":
+              console.log(
+                "connectionstatechange 감지!!!!" + data.Id + " 나갔어요~~~~~"
+              );
+              // 다른 peer들에게 연결된 stream을 제거
+              let removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
+              roomToUsers[data.roomId].users.forEach((Id) => {
+                if (Id != data.Id) {
+                  removingStream.getTracks().forEach((track) => {
+                    let removingTrackId = track.id;
+                    let removingSender = roomToUsers[
+                      data.roomId
+                    ].IdToSendingConnection[Id].getSenders().find((s) => {
+                      console.log(s, s.track);
+                      return s.track != null && s.track.id === removingTrackId;
+                    });
+                    roomToUsers[data.roomId].IdToSendingConnection[
+                      Id
+                    ].removeTrack(removingSender);
+                  });
+                }
+              });
+              newSendingConnection.close();
+
+              roomToUsers[data.roomId].IdToStream[data.Id] = null;
+              break;
+            case "closed":
+              console.log("connection closed");
+              break;
+            //   socket
+            //     .to(data.roomId)
+            //     .emit("someoneClosed", { closedId: data.Id });
+            // break;
+            default:
+              return;
+          }
+        }
+      );
+
+      // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
+      // newSendingConnection.addEventListener(
+      //   "iceconnectionstatechange",
+      //   (event) => {
+      //     if (newSendingConnection.iceConnectionState === "failed") {
+      //       newSendingConnection.restartIce();
+      //     }
+      //   }
+      // );
+
+      //
       io.to(data.Id).emit("welcome", answer);
       // icecandidate 생겨서 이벤트 발생하면 연결에 해당하는 사람에게 ice 보냄
       newSendingConnection.addEventListener("icecandidate", (e) => {
         if (e.candidate != null) {
           io.to(data.Id).emit("iceForSending", {
-            senderId: data.id,
             ice: e.candidate,
           });
-          console.log("sending ice 보내줬어");
         }
       });
     } catch (error) {
       console.log(error);
     }
   });
+
+  socket.on("readyForGettingStream", (data) => {
+    let receivingConnection =
+      roomToUsers[data.roomId].IdToSendingConnection[data.receiverId];
+    // console.log(receivingConnection);
+    let sendingStream = roomToUsers[data.roomId].IdToStream[data.senderId];
+    // console.log(roomToUsers[data.roomId].IdToStream);
+
+    sendingStream.getTracks().forEach((track) => {
+      receivingConnection.addTrack(track, sendingStream);
+    });
+  });
+
   socket.on("iceForSending", async (data) => {
     try {
-      console.log("sending ice 받았어요~");
+      // console.log("sending ice 받았어요~");
       if (
-        roomToUsers[data.roomId].IdToSendingConnection.hasOwnProperty(data.Id)
+        roomToUsers[data.roomId].IdToSendingConnection.hasOwnProperty(
+          data.Id
+        ) &&
+        roomToUsers[data.roomId].IdToSendingConnection[data.Id]
+          .remoteDescription != null
       ) {
-        console.log(data, 222222222);
         roomToUsers[data.roomId].IdToSendingConnection[data.Id].addIceCandidate(
           data.ice
         );
@@ -368,107 +286,139 @@ io.on("connection", (socket) => {
       console.log(e);
     }
   });
-  socket.on("answerForReceiving", async (data) => {
+
+  // 클라이언트로부터 온 네고 offer
+  socket.on("handleNegotiation", async (data) => {
     try {
-      // connection 찾기
-      let i = 0;
-      let target_list =
-        roomToUsers[data.roomId].IdToReceivingConnection[data.receiverId];
-      let len_list = target_list.length;
-      while (i < len_list) {
-        if (target_list[i].senderId === data.senderId) {
-          await target_list[i].connection.setRemoteDescription(data.answer);
-          break;
-        }
-        i++;
+      let handlingConnection =
+        roomToUsers[data.roomId].IdToSendingConnection[data.receiverId];
+      if (!handlingConnection) {
+        return;
       }
+      handlingConnection.setRemoteDescription(data.offer);
+      let answer = await handlingConnection.createAnswer();
+      await handlingConnection.setLocalDescription(answer);
+      io.to(data.receiverId).emit("answerForNegotiation", { answer });
     } catch (e) {
       console.log(e);
     }
   });
-  // iceForReceiving 연결하기
-  // socket.on("iceForReceiving", async (data) => {
-  //   try {
-  //     if (
-  //       roomToUsers[data.roomId].IdToReceivingConnection.hasOwnProperty(
-  //         data.receiverId
-  //       )
-  //     ) {
-  //       let i = 0;
-  //       let target_list =
-  //         roomToUsers[data.roomId].IdToReceivingConnection[data.receiverId];
-  //       let len_list = target_list.length;
-  //       while (i < len_list) {
-  //         if (target_list.senderId === data.senderId) {
-  //           console.log("receiving ice 받았어요");
-  //           target_list.connection.addIceCandidate(data.ice);
-  //           break;
-  //         }
-  //         i++;
-  //       }
-  //     }
-  //   } catch (e) {
-  //     console.log(e);
-  //   }
-  // });
-  // ---------------------------미작업경계------------------------------------
-  socket.on("offer", (offer, roomName) => {
-    socket.to(roomName).emit("offer", offer);
+
+  // 클라이언트로부터 온 nogo answer
+  socket.on("answerForNegotiation", async (data) => {
+    try {
+      let handlingConnection =
+        roomToUsers[data.roomId].IdToSendingConnection[data.receiverId];
+      if (handlingConnection === null) {
+        return;
+      }
+      handlingConnection.setRemoteDescription(data.answer);
+    } catch (e) {
+      console.log(e);
+    }
   });
-  socket.on("answer", (answer, roomName) => {
-    socket.to(roomName).emit("answer", answer);
-  });
-  socket.on("ice", (ice, roomName) => {
-    socket.to(roomName).emit("ice", ice);
-  });
-  socket.on("quit", (roomName, id) => {
-    socket.to(roomName).emit("quit", id);
+
+  socket.on("reconnectOffer", async (data) => {
+    try {
+      let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
+
+      newSendingConnection.addEventListener(
+        "negotiationneeded",
+        async (unused) => {
+          try {
+            let newOffer = await newSendingConnection.createOffer();
+            await newSendingConnection.setLocalDescription(newOffer);
+            io.to(data.Id).emit("handleNegotiation", { offer: newOffer });
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      );
+
+      // 연결의 상태가 변화하였을 때 연결을 close하는 이벤트 리스너
+      newSendingConnection.addEventListener(
+        "connectionstatechange",
+        (unused) => {
+          switch (newSendingConnection.connectionState) {
+            case "disconnected":
+              console.log(
+                "connectionstatechange 감지!!!!" + data.Id + " 나갔어요~~~~~"
+              );
+              let removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
+              roomToUsers[data.roomId].users.forEach((Id) => {
+                if (Id != data.Id) {
+                  removingStream.getTracks().forEach((track) => {
+                    let removingTrackId = track.id;
+                    let removingSender = roomToUsers[
+                      data.roomId
+                    ].IdToSendingConnection[Id].getSenders().find((s) => {
+                      console.log(s, s.track);
+                      return s.track != null && s.track.id === removingTrackId;
+                    });
+                    roomToUsers[data.roomId].IdToSendingConnection[
+                      Id
+                    ].removeTrack(removingSender);
+                  });
+                }
+              });
+
+              newSendingConnection.close();
+              roomToUsers[data.roomId].IdToStream[data.Id] = null;
+              break;
+            // case "closed":
+            //   socket
+            //     .to(data.roomId)
+            //     .emit("someoneClosed", { closedId: data.Id });
+            // break;
+            default:
+              return;
+          }
+        }
+      );
+      // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
+      // newSendingConnection.addEventListener(
+      //   "iceconnectionstatechange",
+      //   (event) => {
+      //     if (newSendingConnection.iceConnectionState === "failed") {
+      //       newSendingConnection.restartIce();
+      //     }
+      //   }
+      // );
+      newSendingConnection.addEventListener("track", (connection) => {
+        if (roomToUsers[data.roomId].IdToStream[data.Id] != 1) {
+          roomToUsers[data.roomId].IdToStream[data.Id] = 1;
+          return;
+        }
+
+        let roomInfo = roomToUsers[data.roomId];
+        let newStream = connection.streams[0];
+        roomInfo.IdToStream[data.Id] = newStream;
+        roomInfo.users.forEach((Id) => {
+          if (Id != data.Id) {
+            io.to(Id).emit("someoneReconnected", {
+              senderId: data.Id,
+              streamId: newStream.id,
+            });
+            // io.to(data.Id).emit("reconnectOldPeers", {
+            //   senderId: Id,
+            //   streamId: roomInfo.IdToStream[Id].id,
+            // });
+            roomInfo.IdToStream[Id].getTracks().forEach((track) => {
+              newSendingConnection.addTrack(track, roomInfo.IdToStream[Id]);
+            });
+          }
+        });
+        console.log("reconnection for" + data.Id + "is finished");
+      });
+
+      roomToUsers[data.roomId].IdToSendingConnection[data.Id] =
+        newSendingConnection;
+      await newSendingConnection.setRemoteDescription(data.sendingOffer);
+      let answer = await newSendingConnection.createAnswer();
+      await newSendingConnection.setLocalDescription(answer);
+    } catch (e) {
+      console.log(e);
+    }
   });
 });
-
-// ------------------receive connection 만들기 -------------------
-// async function makeReceiveConnections(receiverId, senderId, roomInfo) {
-//   // 연결 생성
-//   let newReceivingConnection = new wrtc.RTCPeerConnection(RTC_config);
-
-//   // 연결에 트랙 연결
-//   roomInfo.IdToStream[senderId].getTracks().forEach((track) => {
-//     newReceivingConnection.addTrack(track, roomInfo.IdToStream[senderId]);
-//   });
-//   // icecandidate 이벤트 리스너 설정
-//   newReceivingConnection.addEventListener("icecandidate", (data) => {
-//     socket
-//       .to(receiverId)
-//       .emit("iceForReceiving", { ice: data.candidate, senderId });
-//   });
-//   // offer 생성
-//   const receivingOffer = await newReceivingConnection.createOffer({
-//     offerToReceiveAudio: false,
-//     offerToReceiveVideo: false,
-//   });
-//   newReceivingConnection.setLocalDescription(receivingOffer);
-//   // 연결을 receiverId에 등록
-//   if (roomInfo.IdToReceivingConnection[receiverId] === undefined) {
-//     roomInfo.IdToReceivingConnection[receiverId] = [
-//       {
-//         senderId,
-//         connection: newReceivingConnection,
-//       },
-//     ];
-//   } else {
-//     roomInfo.IdToReceivingConnection[receiverId].push({
-//       senderId,
-//       connection: newReceivingConnection,
-//     });
-//   }
-
-//   return receivingOffer;
-// }
-// -------------------------------------------
-// function handleIce(data) {
-//   console.log("got ice candidate and sent it");
-//   socket.emit("ice", data.candidate, roomId, socket.Id);
-//   //   console.log(data);
-// }
-
 httpServer.listen(3000, handleListen);
