@@ -134,6 +134,7 @@ io.on("connection", (socket) => {
 
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
+      roomInfo.IdToSendingConnection[data.Id] = newSendingConnection;
 
       // console.log(3);
       // ---------------- 추가 관리 필요 ---------------------
@@ -169,7 +170,6 @@ io.on("connection", (socket) => {
       await newSendingConnection.setRemoteDescription(data.sendingOffer);
       let answer = await newSendingConnection.createAnswer();
       await newSendingConnection.setLocalDescription(answer);
-      roomInfo.IdToSendingConnection[data.Id] = newSendingConnection;
 
       // 서버가 negotiation이 필요할 때
 
@@ -321,7 +321,8 @@ io.on("connection", (socket) => {
   socket.on("reconnectOffer", async (data) => {
     try {
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
-
+      roomToUsers[data.roomId].IdToSendingConnection[data.Id] =
+        newSendingConnection;
       newSendingConnection.addEventListener(
         "negotiationneeded",
         async (unused) => {
@@ -411,8 +412,7 @@ io.on("connection", (socket) => {
         console.log("reconnection for" + data.Id + "is finished");
       });
 
-      roomToUsers[data.roomId].IdToSendingConnection[data.Id] =
-        newSendingConnection;
+
       await newSendingConnection.setRemoteDescription(data.sendingOffer);
       let answer = await newSendingConnection.createAnswer();
       await newSendingConnection.setLocalDescription(answer);
