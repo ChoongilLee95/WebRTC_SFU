@@ -2,7 +2,12 @@
 
 const id = 2;
 
-const socket = io();
+const socket = io.connect(
+  "https://942d-2001-2d8-e200-d7f6-cc4e-fa60-6878-f6f1.jp.ngrok.io/",
+  {
+    cors: { origin: "*" },
+  }
+);
 
 // 비디오 관리 버튼
 const muteBtn = document.getElementById("mute");
