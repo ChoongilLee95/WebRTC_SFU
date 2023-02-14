@@ -5,7 +5,9 @@ let cors = require("cors");
 
 const app = express();
 const httpServer = http.createServer(app);
-app.use(cors());
+app.use(cors({
+  origin: '*',
+}));
 
 //--------------------- webRTC ---------------------
 const wrtc = require("wrtc");
@@ -59,13 +61,13 @@ let IdToStream = {};
 
 // Id가 키값으로 sendingConnection에 매칭(연결에 직접 매칭)
 let IdToSendingConnection = {};
-
-const io = socketio(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
+const io = socketio(httpServer);
+// const io = socketio(httpServer, {
+//   cors: {
+//     origin: "*",
+//     methods: ["GET", "POST"],
+//   },
+// });
 io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
