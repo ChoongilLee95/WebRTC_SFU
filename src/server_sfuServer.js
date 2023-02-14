@@ -5,9 +5,11 @@ let cors = require("cors");
 
 const app = express();
 const httpServer = http.createServer(app);
-app.use(cors({
-  origin: '*',
-}));
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 
 //--------------------- webRTC ---------------------
 const wrtc = require("wrtc");
@@ -61,7 +63,14 @@ let IdToStream = {};
 
 // Id가 키값으로 sendingConnection에 매칭(연결에 직접 매칭)
 let IdToSendingConnection = {};
-const io = socketio(httpServer);
+const io = socketio(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["my-custom-header"],
+    credentials: true,
+  },
+});
 // const io = socketio(httpServer, {
 //   cors: {
 //     origin: "*",
