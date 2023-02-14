@@ -81,7 +81,6 @@ io.on("connection", (socket) => {
           let removingSender = roominfo.IdToSendingConnection[
             Id
           ].getSenders().find((s) => {
-            console.log(s, s.track);
             return s.track != null && s.track.id === removingTrackId;
           });
           roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
@@ -127,16 +126,13 @@ io.on("connection", (socket) => {
         };
         roomToUsers[data.roomId] = roomInfo;
       } else {
-        // console.log(2);
         roomInfo = roomToUsers[data.roomId];
-        // roomInfo.users.push(data.Id);
       }
 
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
       roomInfo.IdToSendingConnection[data.Id] = newSendingConnection;
 
-      // console.log(3);
       // ---------------- 추가 관리 필요 ---------------------
       // sendingConnection이 연결이 완료되면 발생하는 이벤트 => 다른 애들한테도 보내주기 위한 함수 생성.
       newSendingConnection.addEventListener("track", (connection) => {
@@ -147,7 +143,6 @@ io.on("connection", (socket) => {
         }
         roomInfo.users.push(data.Id);
         console.log("connection for" + data.Id + "is finished");
-        console.log("sending 연결 완료");
         roomInfo.IdToStream[data.Id] = connection.streams[0];
 
         roomInfo.users.forEach((Id) => {
@@ -178,7 +173,7 @@ io.on("connection", (socket) => {
         "negotiationneeded",
         async (unused) => {
           try {
-            console.log("설마 네고?");
+            console.log("negotiation occur");
             let newOffer = await newSendingConnection.createOffer();
             await newSendingConnection.setLocalDescription(newOffer);
             io.to(data.Id).emit("handleNegotiation", { offer: newOffer });
@@ -206,7 +201,6 @@ io.on("connection", (socket) => {
                     let removingSender = roomToUsers[
                       data.roomId
                     ].IdToSendingConnection[Id].getSenders().find((s) => {
-                      console.log(s, s.track);
                       return s.track != null && s.track.id === removingTrackId;
                     });
                     roomToUsers[data.roomId].IdToSendingConnection[
@@ -222,25 +216,12 @@ io.on("connection", (socket) => {
             case "closed":
               console.log("connection closed");
               break;
-            //   socket
-            //     .to(data.roomId)
-            //     .emit("someoneClosed", { closedId: data.Id });
-            // break;
+
             default:
               return;
           }
         }
       );
-
-      // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
-      // newSendingConnection.addEventListener(
-      //   "iceconnectionstatechange",
-      //   (event) => {
-      //     if (newSendingConnection.iceConnectionState === "failed") {
-      //       newSendingConnection.restartIce();
-      //     }
-      //   }
-      // );
 
       //
       io.to(data.Id).emit("welcome", answer);
@@ -260,10 +241,7 @@ io.on("connection", (socket) => {
   socket.on("readyForGettingStream", (data) => {
     let receivingConnection =
       roomToUsers[data.roomId].IdToSendingConnection[data.receiverId];
-    // console.log(receivingConnection);
     let sendingStream = roomToUsers[data.roomId].IdToStream[data.senderId];
-    // console.log(roomToUsers[data.roomId].IdToStream);
-
     sendingStream.getTracks().forEach((track) => {
       receivingConnection.addTrack(track, sendingStream);
     });
@@ -271,7 +249,6 @@ io.on("connection", (socket) => {
 
   socket.on("iceForSending", async (data) => {
     try {
-      // console.log("sending ice 받았어요~");
       if (
         roomToUsers[data.roomId].IdToSendingConnection.hasOwnProperty(
           data.Id
@@ -354,7 +331,6 @@ io.on("connection", (socket) => {
                     let removingSender = roomToUsers[
                       data.roomId
                     ].IdToSendingConnection[Id].getSenders().find((s) => {
-                      console.log(s, s.track);
                       return s.track != null && s.track.id === removingTrackId;
                     });
                     roomToUsers[data.roomId].IdToSendingConnection[

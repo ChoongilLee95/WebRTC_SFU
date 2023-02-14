@@ -222,12 +222,6 @@ async function handleWelcomeSubmit(event) {
   roomId = input.value;
   input.value = "";
   await startMedia();
-  // await startMedia();
-  // let data = {
-  //   roomId: input.value,
-  //   sendingOffer,
-  //   Id: socket.id,
-  // };
 }
 welcomeForm.addEventListener("submit", handleWelcomeSubmit);
 // -------------------------------------------------------
@@ -344,13 +338,6 @@ async function makeSendingConection() {
       }
     });
 
-    // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
-    // sendingConnection.addEventListener("iceconnectionstatechange", (event) => {
-    //   if (sendingConnection.iceConnectionState === "failed") {
-    //     sendingConnection.restartIce();
-    //   }
-    // });
-
     // 내가 받을 때만 의미가 있는 이벤트 리스너라 일단 비활성
     sendingConnection.addEventListener("track", (data) => {
       console.log("트랙이벤트 발생");
@@ -400,17 +387,9 @@ async function makeNewConnection() {
       }
     });
 
-    // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
-    // sendingConnection.addEventListener("iceconnectionstatechange", (event) => {
-    //   if (sendingConnection.iceConnectionState === "failed") {
-    //     sendingConnection.restartIce();
-    //   }
-    // });
-
     // 내가 받을 때만 의미가 있는 이벤트 리스너라 일단 비활성
     sendingConnection.addEventListener("track", (data) => {
       console.log("트랙이벤트 발생");
-      // console.log(data, data.streams[0].id);
       let userId = streamIdToUser[data.streams[0].id];
       userInfo[userId].video.videoTag.srcObject = data.streams[0];
     });
