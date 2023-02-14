@@ -120,7 +120,7 @@ io.on("connection", (socket) => {
       let roomInfo;
       if (!roomToUsers.hasOwnProperty(data.roomId)) {
         roomInfo = {
-          users: [data.Id],
+          users: [],
           IdToSendingConnection: {},
           IdToStream: {},
           IdToSender: {},
@@ -129,7 +129,7 @@ io.on("connection", (socket) => {
       } else {
         // console.log(2);
         roomInfo = roomToUsers[data.roomId];
-        roomInfo.users.push(data.Id);
+        // roomInfo.users.push(data.Id);
       }
 
       // sendingConnection 연결 수행
@@ -145,6 +145,7 @@ io.on("connection", (socket) => {
           roomInfo.IdToStream[data.Id] = 1;
           return;
         }
+        roomInfo.users.push(data.Id);
         console.log("connection for" + data.Id + "is finished");
         console.log("sending 연결 완료");
         roomInfo.IdToStream[data.Id] = connection.streams[0];
@@ -390,7 +391,7 @@ io.on("connection", (socket) => {
           roomToUsers[data.roomId].IdToStream[data.Id] = 1;
           return;
         }
-
+        roomInfo.users.push(data.Id);
         let roomInfo = roomToUsers[data.roomId];
         let newStream = connection.streams[0];
         roomInfo.IdToStream[data.Id] = newStream;

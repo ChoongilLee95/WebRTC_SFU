@@ -253,6 +253,7 @@ socket.on("iceForSending", async (data) => {
 
 // 새로운 사용자 들어왔을 때 실행되는 소캣
 socket.on("makeNewPeer", (data) => {
+  console.log(sendingConnection.connectionState);
   // console.log(data.streamId);
   console.log("새로운 친구가 왔을 때 사용되는 소캣");
   streamIdToUser[data.streamId] = data.senderId;
