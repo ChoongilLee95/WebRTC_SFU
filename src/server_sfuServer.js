@@ -39,8 +39,7 @@ const RTC_config = {
 app.set("view engine", "pug");
 app.set("views", __dirname + "/views");
 app.use("/public", express.static(__dirname + "/public"));
-app.get("/", (req, res) => res.render("home"));
-app.get("/2", (req, res) => res.render("home"));
+app.get("/", (req, res) => res.render("home_sfuServer"));
 
 app.get("/*", (req, res) => res.redirect("/"));
 const handleListen = () => console.log("server start port 3000");
