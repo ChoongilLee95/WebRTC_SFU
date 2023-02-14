@@ -102,12 +102,6 @@ io.on("connection", (socket) => {
         break;
       }
     }
-
-    // roomToUsers[socketIdToRoomId[socket.id]].IdToStream[socket.id]=
-    // peer들에게 나갔다는 사실 알리기
-
-    // let myPeers = roomToUsers[socketIdToRoomId[socket.id]].users
-    // socket.to( ).emit()
   });
   // Room에 입장한 친구를 room에 넣고 sendingConnection의 offer로 연결 시작
   socket.on("joinRoom", async (data) => {
@@ -343,25 +337,14 @@ io.on("connection", (socket) => {
               newSendingConnection.close();
               roomToUsers[data.roomId].IdToStream[data.Id] = null;
               break;
-            // case "closed":
-            //   socket
-            //     .to(data.roomId)
-            //     .emit("someoneClosed", { closedId: data.Id });
-            // break;
+            case "closed":
+              console.log("connection closed");
+            break;
             default:
               return;
           }
         }
       );
-      // // 연결에 실패했을 때 negotiation이 발생하기 전에 ice협상만 다시 시작하는 이벤트 리스너
-      // newSendingConnection.addEventListener(
-      //   "iceconnectionstatechange",
-      //   (event) => {
-      //     if (newSendingConnection.iceConnectionState === "failed") {
-      //       newSendingConnection.restartIce();
-      //     }
-      //   }
-      // );
       newSendingConnection.addEventListener("track", (connection) => {
         if (roomToUsers[data.roomId].IdToStream[data.Id] != 1) {
           roomToUsers[data.roomId].IdToStream[data.Id] = 1;
@@ -377,10 +360,6 @@ io.on("connection", (socket) => {
               senderId: data.Id,
               streamId: newStream.id,
             });
-            // io.to(data.Id).emit("reconnectOldPeers", {
-            //   senderId: Id,
-            //   streamId: roomInfo.IdToStream[Id].id,
-            // });
             roomInfo.IdToStream[Id].getTracks().forEach((track) => {
               newSendingConnection.addTrack(track, roomInfo.IdToStream[Id]);
             });
