@@ -1,15 +1,23 @@
 import express from "express";
 import http from "http";
-import socketio from "socket.io";
-let cors = require("cors");
+const socketio = require("socket.io");
+const cors = require("cors");
 
 const app = express();
+
+
+
 const httpServer = http.createServer(app);
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+const io = new socketio.Server(httpServer,{
+  cors: {
+    origin: '*',
+    credentials: true,
+    methods: ['GET', 'POST'],
+    allowedHeaders:'Content-Type',
+  }
+});
+
+
 
 //--------------------- webRTC ---------------------
 const wrtc = require("wrtc");
@@ -40,13 +48,7 @@ const RTC_config = {
   ],
 };
 
-app.set("view engine", "pug");
-app.set("views", __dirname + "/views");
-app.use("/public", express.static(__dirname + "/public"));
-app.get("/", (req, res) => res.render("home_sfuServer"));
 
-app.get("/*", (req, res) => res.redirect("/"));
-const handleListen = () => console.log("server start port 3000");
 
 // DB에 존재하는 자료형 roomId를 입력하면
 // users, IdToSendingconnection, IdToRecevingConnection을 담은 객체 리턴
@@ -63,20 +65,8 @@ let IdToStream = {};
 
 // Id가 키값으로 sendingConnection에 매칭(연결에 직접 매칭)
 let IdToSendingConnection = {};
-const io = socketio(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["my-custom-header"],
-    credentials: true,
-  },
-});
-// const io = socketio(httpServer, {
-//   cors: {
-//     origin: "*",
-//     methods: ["GET", "POST"],
-//   },
-// });
+
+
 io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
@@ -121,6 +111,7 @@ io.on("connection", (socket) => {
   // Room에 입장한 친구를 room에 넣고 sendingConnection의 offer로 연결 시작
   socket.on("joinRoom", async (data) => {
     try {
+      console.log("누가 왔어요~");
       socket.name = data.Id;
       socket.join(data.roomId);
       socketIdToRoomId[data.Id] = data.roomId;
@@ -391,4 +382,8 @@ io.on("connection", (socket) => {
     }
   });
 });
-httpServer.listen(3000, handleListen);
+
+// i0.listen(3000);
+httpServer.listen(3000, () => {
+  console.log("port 3000 listen");
+});
