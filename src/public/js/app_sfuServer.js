@@ -37,15 +37,15 @@ const RTC_config = {
     { urls: "stun:stun4.l.google.com:19302" },
     {
       urls: [
-        "stun:13.125.11.187:3478",
-        "turn:13.125.11.187:3478?transport=udp",
+        "stun:13.125.215.89:3478",
+        "turn:13.125.215.89:3478?transport=udp",
       ],
       username: "choongil",
       credential: "Lee",
       // iceCandidatePoolSize: 100,
     },
     {
-      urls: ["stun:3.38.151.56", "turn:3.38.151.56:3478?transport=udp"],
+      urls: ["stun:43.201.60.133:3478", "turn:43.201.60.133:3478?transport=udp"],
       username: "choongil",
       credential: "Lee",
       // iceCandidatePoolSize: 100,

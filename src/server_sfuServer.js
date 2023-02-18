@@ -1,21 +1,78 @@
 import express from "express";
-import http from "http";
+const http = require("http");
 const socketio = require("socket.io");
 const cors = require("cors");
 
 const app = express();
+// app.use((req, res, next) => {
+//   res.setHeader('Access-Control-Allow-Origin', 'http://13.124.246.86:3000');
+//   res.setHeader('Access-Control-Allow-Credentials', 'true');
+//   next();
+// });
+// app.use(cors());
+app.use(cors({
+  origin: 'http://13.124.246.86:3000',
+  credentials: true,
+  allowedHeaders:['my-custom-header'],
+  methods: ['GET', 'POST','PUT','DELETE','OPTIONS'],
+  optionsSuccessStatus:200,
+}))
+
+// app.use(cors({
+//   origin: 'http://13.124.246.86:3000',
+//   credentials: true,
+//   methods: ['GET', 'POST','PUT','DELETE','OPTIONS'],
+//   optionsSuccessStatus:200,
+// }))
 
 
-
+// const httpServer = http.createServer(app);
 const httpServer = http.createServer(app);
-const io = new socketio.Server(httpServer,{
+const io = new socketio.Server(httpServer, {
+  credentials: true,
   cors: {
-    origin: '*',
+    origin: 'http://13.124.246.86:3000',
     credentials: true,
-    methods: ['GET', 'POST'],
-    allowedHeaders:'Content-Type',
+    allowedHeaders:['my-custom-header'],
+    methods: ['GET', 'POST','OPTIONS'],
   }
 });
+//, 'https://b3dd-1-223-174-170.jp.ngrok.io' 'http://13.124.246.86:3000'
+// const io = socketio(httpServer, {
+//   handlePreflightRequest: (req, res) => {
+//       const headers = {
+//           "Access-Control-Allow-Headers": "Content-Type, Authorization",
+//           "Access-Control-Allow-Origin": req.headers.origin, //or the specific origin you want to give access to,
+//           "Access-Control-Allow-Credentials": true
+//       };
+//       res.writeHead(200, headers);
+//       res.end();
+//   }
+// });
+
+
+
+// ----------------------전-------
+// const io = new socketio.Server(httpServer, {
+//   // path: "/socket.io",
+//   cors: {
+//     origin: ['http://13.124.246.86:3000','https://b3dd-1-223-174-170.jp.ngrok.io/','localhost:3000','x-forwarded-for'],
+//     credentials: true,
+//     allowedHeaders:['my-custom-header','x-forwarded-for','abcd'],
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     optionsSuccessStatus:200,
+//   }
+// });
+// socketio.set('origins', 'http://13.124.246.86:3000')
+// const io = new socketio.Server(httpServer, {
+//   path: "/socket.io",
+//   cors: {
+//     origin: '*',
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     optionsSuccessStatus:200,
+//   }
+// });
 
 
 
@@ -32,15 +89,15 @@ const RTC_config = {
     { urls: "stun:stun4.l.google.com:19302" },
     {
       urls: [
-        "stun:13.125.11.187:3478",
-        "turn:13.125.11.187:3478?transport=udp",
+        "stun:13.125.215.89:3478",
+        "turn:13.125.215.89:3478?transport=udp",
       ],
       username: "choongil",
       credential: "Lee",
       // iceCandidatePoolSize: 100,
     },
     {
-      urls: ["stun:3.38.151.56", "turn:3.38.151.56:3478?transport=udp"],
+      urls: ["stun:43.201.60.133:3478", "turn:43.201.60.133:3478?transport=udp"],
       username: "choongil",
       credential: "Lee",
       // iceCandidatePoolSize: 100,
@@ -383,7 +440,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// i0.listen(3000);
+// io.listen(3000);
 httpServer.listen(3000, () => {
   console.log("port 3000 listen");
 });
