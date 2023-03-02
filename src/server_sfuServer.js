@@ -4,12 +4,7 @@ const socketio = require("socket.io");
 const cors = require("cors");
 
 const app = express();
-// app.use((req, res, next) => {
-//   res.setHeader('Access-Control-Allow-Origin', 'http://13.124.246.86:3000');
-//   res.setHeader('Access-Control-Allow-Credentials', 'true');
-//   next();
-// });
-// app.use(cors());
+
 app.use(cors({
   origin: 'http://13.124.246.86:3000',
   credentials: true,
@@ -18,20 +13,14 @@ app.use(cors({
   optionsSuccessStatus:200,
 }))
 
-// app.use(cors({
-//   origin: 'http://13.124.246.86:3000',
-//   credentials: true,
-//   methods: ['GET', 'POST','PUT','DELETE','OPTIONS'],
-//   optionsSuccessStatus:200,
-// }))
 
 
-// const httpServer = http.createServer(app);
 const httpServer = http.createServer(app);
 const io = new socketio.Server(httpServer, {
+  path: "/sfusocket",
   credentials: true,
   cors: {
-    origin: 'http://13.124.246.86:3000',
+    origin: 'https://chjungle.shop',
     credentials: true,
     allowedHeaders:['my-custom-header'],
     methods: ['GET', 'POST','OPTIONS'],
@@ -89,15 +78,15 @@ const RTC_config = {
     { urls: "stun:stun4.l.google.com:19302" },
     {
       urls: [
-        "stun:13.125.215.89:3478",
-        "turn:13.125.215.89:3478?transport=udp",
+        "stun:13.124.84.195:3478",
+        "turn:13.124.84.195:3478?transport=udp",
       ],
       username: "choongil",
       credential: "Lee",
       // iceCandidatePoolSize: 100,
     },
     {
-      urls: ["stun:43.201.60.133:3478", "turn:43.201.60.133:3478?transport=udp"],
+      urls: ["stun:43.201.148.88:3478", "turn:43.201.148.88:3478?transport=udp"],
       username: "choongil",
       credential: "Lee",
       // iceCandidatePoolSize: 100,
@@ -136,6 +125,13 @@ io.on("connection", (socket) => {
     console.log(socket.name + " 나갔어요~");
     let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
     let removingStream = roominfo.IdToStream[socket.name];
+
+    for(let i = 0; i < roominfo.users.length; i++) {
+      if(roominfo.users[i] === socket.name)  {
+        roominfo.users.splice(i, 1);
+        i--;
+      }
+    }
     roominfo.users.forEach((Id) => {
       if (Id != socket.name) {
         removingStream.getTracks().forEach((track) => {
@@ -145,9 +141,9 @@ io.on("connection", (socket) => {
           ].getSenders().find((s) => {
             return s.track != null && s.track.id === removingTrackId;
           });
-          roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
+          // roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
         });
-        io.to(Id).emit("someoneLeft", { senderId: socket.name });
+        io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", { senderId: socket.name });
       }
     });
 
@@ -169,6 +165,7 @@ io.on("connection", (socket) => {
   socket.on("joinRoom", async (data) => {
     try {
       console.log("누가 왔어요~");
+      console.log(data.roomId)
       socket.name = data.Id;
       socket.join(data.roomId);
       socketIdToRoomId[data.Id] = data.roomId;
@@ -180,6 +177,7 @@ io.on("connection", (socket) => {
           IdToSendingConnection: {},
           IdToStream: {},
           IdToSender: {},
+          IdToRTCId: {},
         };
         roomToUsers[data.roomId] = roomInfo;
       } else {
@@ -199,21 +197,22 @@ io.on("connection", (socket) => {
           return;
         }
         roomInfo.users.push(data.Id);
+        roomInfo.IdToRTCId[data.Id] = data.RTCId;
         console.log("connection for" + data.Id + "is finished");
         roomInfo.IdToStream[data.Id] = connection.streams[0];
 
         roomInfo.users.forEach((Id) => {
           if (Id != data.Id) {
             //-------------------------- 새로운 피어의 연결이 완료되었을 떄 무엇을 할 것인가------
-
+            console.log("여기")
             // 기존에 있던 사람들에게 새로온 사람의 streamId와 userId를 제공
-            io.to(Id).emit("makeNewPeer", {
+            io.to(roomInfo.IdToRTCId[Id]).emit("makeNewPeer", {
               senderId: data.Id,
               streamId: connection.streams[0].id,
             });
 
             // 새로온 사람에게 기존에 있던 사람들의 streamId와 userId르 제공
-            io.to(data.Id).emit("makeNewPeer", {
+            io.to(roomInfo.IdToRTCId[data.Id]).emit("makeNewPeer", {
               senderId: Id,
               streamId: roomInfo.IdToStream[Id].id,
             });
@@ -233,7 +232,7 @@ io.on("connection", (socket) => {
             console.log("negotiation occur");
             let newOffer = await newSendingConnection.createOffer();
             await newSendingConnection.setLocalDescription(newOffer);
-            io.to(data.Id).emit("handleNegotiation", { offer: newOffer });
+            io.to(roomInfo.IdToRTCId[data.Id]).emit("handleNegotiation", { offer: newOffer });
           } catch (e) {
             console.log(e);
           }
@@ -260,9 +259,9 @@ io.on("connection", (socket) => {
                     ].IdToSendingConnection[Id].getSenders().find((s) => {
                       return s.track != null && s.track.id === removingTrackId;
                     });
-                    roomToUsers[data.roomId].IdToSendingConnection[
-                      Id
-                    ].removeTrack(removingSender);
+                    // roomToUsers[data.roomId].IdToSendingConnection[
+                    //   Id
+                    // ].removeTrack(removingSender);
                   });
                 }
               });
@@ -281,11 +280,11 @@ io.on("connection", (socket) => {
       );
 
       //
-      io.to(data.Id).emit("welcome", answer);
+      io.to(roomToUsers[data.roomId].IdToRTCId[data.Id]).emit("welcome", answer);
       // icecandidate 생겨서 이벤트 발생하면 연결에 해당하는 사람에게 ice 보냄
       newSendingConnection.addEventListener("icecandidate", (e) => {
         if (e.candidate != null) {
-          io.to(data.Id).emit("iceForSending", {
+          io.to(roomToUsers[data.roomId].IdToRTCId[data.Id]).emit("iceForSending", {
             ice: e.candidate,
           });
         }
@@ -296,12 +295,19 @@ io.on("connection", (socket) => {
   });
 
   socket.on("readyForGettingStream", (data) => {
-    let receivingConnection =
-      roomToUsers[data.roomId].IdToSendingConnection[data.receiverId];
-    let sendingStream = roomToUsers[data.roomId].IdToStream[data.senderId];
-    sendingStream.getTracks().forEach((track) => {
-      receivingConnection.addTrack(track, sendingStream);
-    });
+    try {
+
+      console.log("스트림을 받을 준비가 됐습니다")
+      let receivingConnection =
+        roomToUsers[data.roomId].IdToSendingConnection[data.receiverId];
+      let sendingStream = roomToUsers[data.roomId].IdToStream[data.senderId];
+      sendingStream.getTracks().forEach((track) => {
+        // 여기 수정 필요
+        receivingConnection.addTrack(track, sendingStream);
+      });
+    } catch (e) {
+      console.log(e);
+    }
   });
 
   socket.on("iceForSending", async (data) => {
@@ -333,7 +339,7 @@ io.on("connection", (socket) => {
       handlingConnection.setRemoteDescription(data.offer);
       let answer = await handlingConnection.createAnswer();
       await handlingConnection.setLocalDescription(answer);
-      io.to(data.receiverId).emit("answerForNegotiation", { answer });
+      io.to(roomToUsers[data.roomId].IdToRTCId[data.receiverId]).emit("answerForNegotiation", { answer });
     } catch (e) {
       console.log(e);
     }
@@ -364,7 +370,7 @@ io.on("connection", (socket) => {
           try {
             let newOffer = await newSendingConnection.createOffer();
             await newSendingConnection.setLocalDescription(newOffer);
-            io.to(data.Id).emit("handleNegotiation", { offer: newOffer });
+            io.to(roomToUsers[data.roomId].IdToRTCId[data.Id]).emit("handleNegotiation", { offer: newOffer });
           } catch (e) {
             console.log(e);
           }
@@ -409,31 +415,36 @@ io.on("connection", (socket) => {
         }
       );
       newSendingConnection.addEventListener("track", (connection) => {
-        if (roomToUsers[data.roomId].IdToStream[data.Id] != 1) {
-          roomToUsers[data.roomId].IdToStream[data.Id] = 1;
-          return;
-        }
-        roomInfo.users.push(data.Id);
-        let roomInfo = roomToUsers[data.roomId];
-        let newStream = connection.streams[0];
-        roomInfo.IdToStream[data.Id] = newStream;
-        roomInfo.users.forEach((Id) => {
-          if (Id != data.Id) {
-            io.to(Id).emit("someoneReconnected", {
-              senderId: data.Id,
-              streamId: newStream.id,
-            });
-            roomInfo.IdToStream[Id].getTracks().forEach((track) => {
-              newSendingConnection.addTrack(track, roomInfo.IdToStream[Id]);
-            });
-          }
-        });
-        console.log("reconnection for" + data.Id + "is finished");
-      });
+        try {
 
-      await newSendingConnection.setRemoteDescription(data.sendingOffer);
-      let answer = await newSendingConnection.createAnswer();
-      await newSendingConnection.setLocalDescription(answer);
+          if (roomToUsers[data.roomId].IdToStream[data.Id] != 1) {
+            roomToUsers[data.roomId].IdToStream[data.Id] = 1;
+            return;
+          }
+          let roomInfo = roomToUsers[data.roomId];
+          roomInfo.users.push(data.Id);
+          let newStream = connection.streams[0];
+          roomInfo.IdToStream[data.Id] = newStream;
+          roomInfo.users.forEach((Id) => {
+            if (Id != data.Id) {
+              io.to(roomInfo.IdToRTCId[Id]).emit("someoneReconnected", {
+                senderId: data.Id,
+                streamId: newStream.id,
+              });
+              roomInfo.IdToStream[Id].getTracks().forEach((track) => {
+                newSendingConnection.addTrack(track, roomInfo.IdToStream[Id]);
+              });
+            }
+          });
+          console.log("reconnection for" + data.Id + "is finished");
+        } catch (e) {
+          console.log(e);
+        }
+        });
+  
+        await newSendingConnection.setRemoteDescription(data.sendingOffer);
+        let answer = await newSendingConnection.createAnswer();
+        await newSendingConnection.setLocalDescription(answer);
     } catch (e) {
       console.log(e);
     }
