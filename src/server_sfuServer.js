@@ -186,7 +186,7 @@ io.on("connection", (socket) => {
       } else {
         roomInfo = roomToUsers[data.roomId];
       }
-      if (roomInfo.length >= 5) {
+      if (roomInfo.users.length >= 5) {
         console.log(data.Id + " 가 방이 꽉차서 나갔습니다");
         return;
       }
