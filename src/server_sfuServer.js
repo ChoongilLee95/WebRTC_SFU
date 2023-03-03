@@ -116,7 +116,6 @@ let IdToSendingConnection = {};
 io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     try {
-
       // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
       if (socket.name === undefined) {
         return;
@@ -157,7 +156,6 @@ io.on("connection", (socket) => {
           io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", { senderId: socket.name });
         });
       }
-  
       // 연결 끊기
       roominfo.IdToSendingConnection[socket.name] = null;
       // 방 내부 데이터에서 제거하기
@@ -173,7 +171,6 @@ io.on("connection", (socket) => {
       console.log("누가 왔어요~");
       console.log(data.roomId)
       socket.name = data.Id;
-      socket.join(data.roomId);
       socketIdToRoomId[data.Id] = data.roomId;
       // 이미 존재하는 방이 아니라면
       let roomInfo;
@@ -193,7 +190,7 @@ io.on("connection", (socket) => {
         console.log(data.Id + " 가 방이 꽉차서 나갔습니다");
         return;
       }
-
+      socket.join(data.roomId);
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
       roomInfo.IdToSendingConnection[data.Id] = newSendingConnection;
