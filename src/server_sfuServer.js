@@ -125,6 +125,9 @@ io.on("connection", (socket) => {
       // 다른 연결들에 전송되고있는 스트림 제거
       console.log(socket.name + " 나갔어요~");
       let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
+      if (roominfo === undefined) {
+        return;
+      }
       let removingStream = roominfo.IdToStream[socket.name];
   
       for(let i = 0; i < roominfo.users.length; i++) {
