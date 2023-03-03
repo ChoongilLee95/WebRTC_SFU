@@ -135,6 +135,7 @@ io.on("connection", (socket) => {
         }
       }
       if (removingStream) {
+        roominfo.IdToStream[socket.name] = null;
         roominfo.users.forEach((Id) => {
           removingStream.getTracks().forEach((track) => {
             try {
@@ -159,9 +160,7 @@ io.on("connection", (socket) => {
   
       // 연결 끊기
       roominfo.IdToSendingConnection[socket.name] = null;
-  
       // 방 내부 데이터에서 제거하기
-      roominfo.IdToStream[socket.name] = null;
       roominfo.IdToSender[socket.name] = null;
       roominfo.IdToSendingConnection[socket.name] = null;
     } catch (e) {
@@ -189,6 +188,10 @@ io.on("connection", (socket) => {
         roomToUsers[data.roomId] = roomInfo;
       } else {
         roomInfo = roomToUsers[data.roomId];
+      }
+      if (roomInfo.length >= 5) {
+        console.log(data.Id + " 가 방이 꽉차서 나갔습니다");
+        return;
       }
 
       // sendingConnection 연결 수행
@@ -260,6 +263,7 @@ io.on("connection", (socket) => {
                 // 다른 peer들에게 연결된 stream을 제거
                 removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
                 if (removingStream) {
+                  roomInfo.IdToStream[data.Id] = null;
                   for(let i = 0; i < roomInfo.users.length; i++) {
                     if(roomInfo.users[i] === socket.name)  {
                       roomInfo.users.splice(i, 1);
@@ -285,15 +289,14 @@ io.on("connection", (socket) => {
                 }
                 roomInfo.IdToSender[data.Id] = null;
                 roomInfo.IdToSendingConnection[data.Id] = null;
-                roomInfo.IdToStream[data.Id] = null;
                 newSendingConnection.close();
-  
                 roomToUsers[data.roomId].IdToStream[data.Id] = null;
                 break;
               case "closed":
                 console.log("connection closed");
                 removingStream = roomInfo.IdToStream[data.Id];
                 if (removingStream) {
+                  roomInfo.IdToStream[data.Id] = null;
                   for(let i = 0; i < roomInfo.users.length; i++) {
                     if(roomInfo.users[i] === socket.name)  {
                       roomInfo.users.splice(i, 1);
@@ -319,7 +322,6 @@ io.on("connection", (socket) => {
                 }
                 roomInfo.IdToSender[data.Id] = null;
                 roomInfo.IdToSendingConnection[data.Id] = null;
-                roomInfo.IdToStream[data.Id] = null;
                 newSendingConnection.close();
                 break;
   
