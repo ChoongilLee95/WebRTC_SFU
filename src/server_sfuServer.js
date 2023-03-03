@@ -115,45 +115,58 @@ let IdToSendingConnection = {};
 
 io.on("connection", (socket) => {
   socket.on("disconnect", () => {
-    // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
-    if (socket.name === undefined) {
-      return;
-    }
-    // 연결이 끊어졌을 때
+    try {
 
-    // 다른 연결들에 전송되고있는 스트림 제거
-    console.log(socket.name + " 나갔어요~");
-    let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
-    let removingStream = roominfo.IdToStream[socket.name];
-
-    for(let i = 0; i < roominfo.users.length; i++) {
-      if(roominfo.users[i] === socket.name)  {
-        roominfo.users.splice(i, 1);
-        i--;
+      // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
+      if (socket.name === undefined) {
+        return;
       }
-    }
-    roominfo.users.forEach((Id) => {
-      removingStream.getTracks().forEach((track) => {
-        let removingTrackId = track.id;
-        console.log(removingTrackId);
-        let removingSender = roominfo.IdToSendingConnection[
-          Id
-        ].getSenders().find((s) => {
-          return s.track != null && s.track.id === removingTrackId;
+      // 연결이 끊어졌을 때
+  
+      // 다른 연결들에 전송되고있는 스트림 제거
+      console.log(socket.name + " 나갔어요~");
+      let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
+      let removingStream = roominfo.IdToStream[socket.name];
+  
+      for(let i = 0; i < roominfo.users.length; i++) {
+        if(roominfo.users[i] === socket.name)  {
+          roominfo.users.splice(i, 1);
+          i--;
+        }
+      }
+      if (removingStream) {
+        roominfo.users.forEach((Id) => {
+          removingStream.getTracks().forEach((track) => {
+            try {
+              let removingTrackId = track.id;
+              console.log(removingTrackId);
+              let removingSender = roominfo.IdToSendingConnection[
+                Id
+              ].getSenders().find((s) => {
+                return s.track != null && s.track.id === removingTrackId;
+              });
+              console.log("기존 연결에 트랙을 제거합니다")
+              if (roominfo.IdToSendingConnection[Id]) {
+                roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
+              }
+            }catch (e) {
+              console.log(e);
+            }
+          });
+          io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", { senderId: socket.name });
         });
-        console.log("기존 연결에 트랙을 제거합니다")
-        roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
-      });
-      io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", { senderId: socket.name });
-    });
-
-    // 연결 끊기
-    roominfo.IdToSendingConnection[socket.name] = null;
-
-    // 방 내부 데이터에서 제거하기
-    roominfo.IdToStream[socket.name] = null;
-    roominfo.IdToSender[socket.name] = null;
-    roominfo.IdToSendingConnection[socket.name] = null;
+      }
+  
+      // 연결 끊기
+      roominfo.IdToSendingConnection[socket.name] = null;
+  
+      // 방 내부 데이터에서 제거하기
+      roominfo.IdToStream[socket.name] = null;
+      roominfo.IdToSender[socket.name] = null;
+      roominfo.IdToSendingConnection[socket.name] = null;
+    } catch (e) {
+      console.log(e);
+    }
   });
   // Room에 입장한 친구를 room에 넣고 sendingConnection의 offer로 연결 시작
   socket.on("joinRoom", async (data) => {
@@ -181,7 +194,6 @@ io.on("connection", (socket) => {
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);
       roomInfo.IdToSendingConnection[data.Id] = newSendingConnection;
-      console.log(roomToUsers);
       // ---------------- 추가 관리 필요 ---------------------
       // sendingConnection이 연결이 완료되면 발생하는 이벤트 => 다른 애들한테도 보내주기 위한 함수 생성.
       newSendingConnection.addEventListener("track", (connection) => {
@@ -239,38 +251,14 @@ io.on("connection", (socket) => {
         "connectionstatechange",
         (unused) => {
           try {
+            let removingStream;
             switch (newSendingConnection.connectionState) {
               case "disconnected":
                 console.log(
                   "connectionstatechange 감지!!!!" + data.Id + " 나갔어요~~~~~"
                 );
-                // // 다른 peer들에게 연결된 stream을 제거
-                // let removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
-                // roomToUsers[data.roomId].users.forEach((Id) => {
-                //   if (Id != data.Id) {
-                //     removingStream.getTracks().forEach((track) => {
-                //       let removingTrackId = track.id;
-                //       let removingSender = roomToUsers[
-                //         data.roomId
-                //       ].IdToSendingConnection[Id].getSenders().find((s) => {
-                //         return s.track != null && s.track.id === removingTrackId;
-                //       });
-                //       roomToUsers[data.roomId].IdToSendingConnection[
-                //         Id
-                //       ].removeTrack(removingSender);
-                //     });
-                //   }
-                // });
-                // newSendingConnection.close();
-  
-                // roomToUsers[data.roomId].IdToStream[data.Id] = null;
-                break;
-              case "closed":
-                console.log("connection closed");
-                roomInfo.users.forEach((user) => {
-                  console.log(roomInfo.IdToSendingConnection[user].getReceivers())
-                })
-                let removingStream = roomInfo.IdToStream[data.Id];
+                // 다른 peer들에게 연결된 stream을 제거
+                removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
                 if (removingStream) {
                   for(let i = 0; i < roomInfo.users.length; i++) {
                     if(roomInfo.users[i] === socket.name)  {
@@ -289,7 +277,40 @@ io.on("connection", (socket) => {
                       });
                       console.log("기존 연결에 트랙을 제거합니다")
                       if (roomInfo.IdToSendingConnection[Id]) {
-                        
+                        roomInfo.IdToSendingConnection[Id].removeTrack(removingSender);
+                      }
+                    });
+                    io.to(roomInfo.IdToRTCId[Id]).emit("someoneLeft", { senderId: data.Id });
+                  });
+                }
+                roomInfo.IdToSender[data.Id] = null;
+                roomInfo.IdToSendingConnection[data.Id] = null;
+                roomInfo.IdToStream[data.Id] = null;
+                newSendingConnection.close();
+  
+                roomToUsers[data.roomId].IdToStream[data.Id] = null;
+                break;
+              case "closed":
+                console.log("connection closed");
+                removingStream = roomInfo.IdToStream[data.Id];
+                if (removingStream) {
+                  for(let i = 0; i < roomInfo.users.length; i++) {
+                    if(roomInfo.users[i] === socket.name)  {
+                      roomInfo.users.splice(i, 1);
+                      i--;
+                    }
+                  }
+                  roomInfo.users.forEach((Id) => {
+                    removingStream.getTracks().forEach((track) => {
+                      let removingTrackId = track.id;
+                      console.log(removingTrackId);
+                      let removingSender = roomInfo.IdToSendingConnection[
+                        Id
+                      ].getSenders().find((s) => {
+                        return s.track != null && s.track.id === removingTrackId;
+                      });
+                      console.log("기존 연결에 트랙을 제거합니다")
+                      if (roomInfo.IdToSendingConnection[Id]) {
                         roomInfo.IdToSendingConnection[Id].removeTrack(removingSender);
                       }
                     });
@@ -339,7 +360,6 @@ io.on("connection", (socket) => {
           return s.track != null && s.track.id === track.id;
         });
         if (removeSender) {
-          
           receivingConnection.removeTrack(removeSender);
         }
         receivingConnection.addTrack(track, sendingStream);
@@ -351,7 +371,7 @@ io.on("connection", (socket) => {
 
   socket.on("iceForSending", async (data) => {
     try {
-      if (
+      if ( roomToUsers[data.roomId].IdToSendingConnection &&
         roomToUsers[data.roomId].IdToSendingConnection.hasOwnProperty(
           data.Id
         ) &&
