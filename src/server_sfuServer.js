@@ -397,10 +397,12 @@ io.on("connection", (socket) => {
       if (!handlingConnection) {
         return;
       }
-      handlingConnection.setRemoteDescription(data.offer);
-      let answer = await handlingConnection.createAnswer();
-      await handlingConnection.setLocalDescription(answer);
-      io.to(roomToUsers[data.roomId].IdToRTCId[data.receiverId]).emit("answerForNegotiation", { answer });
+      if (handlingConnection) {
+        handlingConnection.setRemoteDescription(data.offer);
+        let answer = await handlingConnection.createAnswer();
+        await handlingConnection.setLocalDescription(answer);
+        io.to(roomToUsers[data.roomId].IdToRTCId[data.receiverId]).emit("answerForNegotiation", { answer });
+      }
     } catch (e) {
       console.log(e);
     }
