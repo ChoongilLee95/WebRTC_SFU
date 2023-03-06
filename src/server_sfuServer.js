@@ -68,7 +68,6 @@ io.on("connection", (socket) => {
         return;
       }
       // 연결이 끊어졌을 때
-
       // 다른 연결들에 전송되고있는 스트림 제거
       console.log(socket.name + " 나갔어요~");
       let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
