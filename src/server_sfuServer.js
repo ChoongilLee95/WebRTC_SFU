@@ -71,12 +71,7 @@ const io = socketio(httpServer, {
     credentials: true,
   },
 });
-// const io = socketio(httpServer, {
-//   cors: {
-//     origin: "*",
-//     methods: ["GET", "POST"],
-//   },
-// });
+
 io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     // 새로고침해버리면 socket정보가 유실됨 추가 예외처리를 위해선 존재여부를 단톡 돌려봐야 할ㄷ스
