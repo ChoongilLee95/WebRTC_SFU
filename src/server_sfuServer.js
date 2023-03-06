@@ -5,16 +5,6 @@ const cors = require("cors");
 
 const app = express();
 
-// app.use(
-//   cors({
-//     origin: "http://13.124.246.86:3000",
-//     credentials: true,
-//     allowedHeaders: ["my-custom-header"],
-//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//     optionsSuccessStatus: 200,
-//   })
-// );
-
 const httpServer = http.createServer(app);
 const io = new socketio.Server(httpServer, {
   path: "/sfusocket",
