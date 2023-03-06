@@ -24,14 +24,7 @@ call.hidden = true;
 // RTC 연결 생성 변수 (추가 설명 필요)
 const RTC_config = {
   iceServers: [
-    // {
-    //   urls: 'stun:[STUN_IP]:[PORT]',
-    //   'credentials': '[YOR CREDENTIALS]',
-    //   'username': '[USERNAME]'
-    // },
-    {
-      urls: "stun:stun.l.google.com:19302",
-    },
+    { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
@@ -42,13 +35,14 @@ const RTC_config = {
       ],
       username: "choongil",
       credential: "Lee",
-      // iceCandidatePoolSize: 100,
     },
     {
-      urls: ["stun:43.201.60.133:3478", "turn:43.201.60.133:3478?transport=udp"],
+      urls: [
+        "stun:43.201.60.133:3478",
+        "turn:43.201.60.133:3478?transport=udp",
+      ],
       username: "choongil",
       credential: "Lee",
-      // iceCandidatePoolSize: 100,
     },
   ],
 };
