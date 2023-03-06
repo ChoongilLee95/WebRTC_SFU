@@ -95,7 +95,7 @@ io.on("connection", (socket) => {
                 return s.track != null && s.track.id === removingTrackId;
               });
               console.log("기존 연결에 트랙을 제거합니다");
-              if (roominfo.IdToSendingConnection[Id]) {
+              if (roominfo.IdToSendingConnection[Id] && removingSender) {
                 roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
               }
             } catch (e) {
