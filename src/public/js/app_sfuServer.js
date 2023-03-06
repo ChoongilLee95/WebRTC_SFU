@@ -1,7 +1,3 @@
-// alert("hi");
-
-const id = 2;
-
 const socket = io.connect("http://localhost:3000");
 
 // 비디오 관리 버튼
@@ -276,7 +272,7 @@ socket.on("makeNewPeer", (data) => {
   }
   socket.emit("readyForGettingStream", {
     roomId,
-    receiverId: App.mainSocket.id,
+    receiverId: socket.id,
     senderId: data.senderId,
   });
 });
@@ -289,7 +285,7 @@ socket.on("handleNegotiation", async (data) => {
     socket.emit("answerForNegotiation", {
       roomId,
       answer,
-      receiverId: App.mainSocket.id,
+      receiverId: socket.id,
     });
   } catch (e) {
     console.log(e);
