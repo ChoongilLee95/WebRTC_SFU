@@ -2,12 +2,7 @@
 
 const id = 2;
 
-const socket = io.connect(
-  "https://942d-2001-2d8-e200-d7f6-cc4e-fa60-6878-f6f1.jp.ngrok.io/",
-  {
-    cors: { origin: "*" },
-  }
-);
+const socket = io.connect("http://localhost:3000");
 
 // 비디오 관리 버튼
 const muteBtn = document.getElementById("mute");
@@ -24,11 +19,6 @@ call.hidden = true;
 // RTC 연결 생성 변수 (추가 설명 필요)
 const RTC_config = {
   iceServers: [
-    // {
-    //   urls: 'stun:[STUN_IP]:[PORT]',
-    //   'credentials': '[YOR CREDENTIALS]',
-    //   'username': '[USERNAME]'
-    // },
     {
       urls: "stun:stun.l.google.com:19302",
     },
@@ -42,13 +32,11 @@ const RTC_config = {
       ],
       username: "choongil",
       credential: "Lee",
-      // iceCandidatePoolSize: 100,
     },
     {
       urls: ["stun:3.38.151.56", "turn:3.38.151.56:3478?transport=udp"],
       username: "choongil",
       credential: "Lee",
-      // iceCandidatePoolSize: 100,
     },
   ],
 };
@@ -81,6 +69,26 @@ const videos = [
     isConnected: false,
   },
 ];
+function initializeSetting() {
+  const videos = [
+    {
+      videoTag: peersFace1,
+      isConnected: false,
+    },
+    {
+      videoTag: peersFace2,
+      isConnected: false,
+    },
+    {
+      videoTag: peersFace3,
+      isConnected: false,
+    },
+    {
+      videoTag: peersFace4,
+      isConnected: false,
+    },
+  ];
+}
 
 // streamId to user
 let streamIdToUser = {};
@@ -245,7 +253,6 @@ socket.on("welcome", async (answer) => {
 
 socket.on("iceForSending", async (data) => {
   if (sendingConnection.remoteDescription != null) {
-    console.log("i got ice for sending!");
     await sendingConnection.addIceCandidate(data.ice);
   }
 });
@@ -253,7 +260,6 @@ socket.on("iceForSending", async (data) => {
 // 새로운 사용자 들어왔을 때 실행되는 소캣
 socket.on("makeNewPeer", (data) => {
   console.log(sendingConnection.connectionState);
-  // console.log(data.streamId);
   console.log("새로운 친구가 왔을 때 사용되는 소캣");
   streamIdToUser[data.streamId] = data.senderId;
   userInfo[data.senderId] = {};
@@ -261,6 +267,7 @@ socket.on("makeNewPeer", (data) => {
   let i = 0;
   while (i < 4) {
     if (videos[i].isConnected === false) {
+      console.log("여기");
       videos[i].isConnected = true;
       userInfo[data.senderId].video = videos[i];
       break;
@@ -269,12 +276,11 @@ socket.on("makeNewPeer", (data) => {
   }
   socket.emit("readyForGettingStream", {
     roomId,
-    receiverId: socket.id,
+    receiverId: App.mainSocket.id,
     senderId: data.senderId,
   });
 });
-
-// 서버가 보낸 nego 요청
+// 서버가 보낸 협상 요청
 socket.on("handleNegotiation", async (data) => {
   try {
     sendingConnection.setRemoteDescription(data.offer);
@@ -283,22 +289,11 @@ socket.on("handleNegotiation", async (data) => {
     socket.emit("answerForNegotiation", {
       roomId,
       answer,
-      receiverId: socket.id,
+      receiverId: App.mainSocket.id,
     });
   } catch (e) {
     console.log(e);
   }
-});
-
-// 서버가 보낸 다른사람의 재연결 정보
-socket.on("someoneReconnected", (data) => {
-  streamIdToUser[data.streamId] = data.senderId;
-  userInfo[data.senderId].streamId = data.streamId;
-  socket.emit("readyForGettingStream", {
-    roomId,
-    receiverId: socket.id,
-    senderId: data.senderId,
-  });
 });
 
 // 누군가 나갔음을 알리는 소캣
@@ -338,8 +333,14 @@ async function makeSendingConection() {
 
     sendingConnection.addEventListener("connectionstatechange", (unused) => {
       if (sendingConnection.connectionState === "disconnected") {
+        streamIdToUser = {};
+        initializeSetting();
         sendingConnection.close();
-        makeNewConnection();
+        makeSendingConection();
+      } else if (sendingConnection.connectionState === "closed") {
+        streamIdToUser = {};
+        initializeSetting();
+        makeSendingConection();
       }
     });
 
