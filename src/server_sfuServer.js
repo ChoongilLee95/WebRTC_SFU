@@ -137,10 +137,10 @@ io.on("connection", (socket) => {
       } else {
         roomInfo = roomToUsers[data.roomId];
       }
-      if (roomInfo.users.length >= 5) {
-        console.log(data.Id + " 가 방이 꽉차서 나갔습니다");
-        return;
-      }
+      // if (roomInfo.users.length >= 5) {
+      //   console.log(data.Id + " 가 방이 꽉차서 나갔습니다");
+      //   return;
+      // }
       socket.join(data.roomId);
       // sendingConnection 연결 수행
       let newSendingConnection = new wrtc.RTCPeerConnection(RTC_config);

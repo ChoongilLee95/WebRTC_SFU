@@ -6,6 +6,12 @@
   - 참고링크 : https://millo-l.github.io/WebRTC-%EA%B5%AC%ED%98%84%ED%95%98%EA%B8%B0-1-N-SFU/
 - src/server_sfuServer.js : 위의 SFU 구현방식을 바꿔서 client들과 server간의 연결의 수를 늘리는 방식이 아니라 하나의 연결에 다른 사람들의 stream을 추가하는 방식으로 구현했습니다
   - 연결이 안정적이며 프로젝트에서 사용한 서버 파일입니다.
+- 시작을 위한 커멘드라인 명령어는 다음과 같습니다
+
+  `$ npm run dev`
+
+- 자세한 구현과정과 정리된 내용은 아래 링크의 제 notion에 정리해두었습니다.
+  https://www.notion.so/340e9cdd0ecc4a50be6c88df40516c21?v=ecd486fa08744363ad4fac38716c7866&pvs=4
 
 ## 주의사항
 
