@@ -85,6 +85,9 @@ io.on("connection", (socket) => {
       if (removingStream) {
         roominfo.IdToStream[socket.name] = null;
         roominfo.users.forEach((Id) => {
+          io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", {
+            senderId: socket.name,
+          });
           removingStream.getTracks().forEach((track) => {
             try {
               let removingTrackId = track.id;
@@ -101,9 +104,6 @@ io.on("connection", (socket) => {
             } catch (e) {
               console.log(e);
             }
-          });
-          io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", {
-            senderId: socket.name,
           });
         });
       }
@@ -216,6 +216,10 @@ io.on("connection", (socket) => {
                     }
                   }
                   roomInfo.users.forEach((Id) => {
+                    // 다른사람들에게 나간 사람의 socketid를 전달
+                    io.to(roomInfo.IdToRTCId[Id]).emit("someoneLeft", {
+                      senderId: data.Id,
+                    });
                     removingStream.getTracks().forEach((track) => {
                       let removingTrackId = track.id;
                       console.log(removingTrackId);
@@ -232,10 +236,6 @@ io.on("connection", (socket) => {
                           removingSender
                         );
                       }
-                    });
-                    // 다른사람들에게 나간 사람의 socketid를 전달
-                    io.to(roomInfo.IdToRTCId[Id]).emit("someoneLeft", {
-                      senderId: data.Id,
                     });
                   });
                 }
@@ -256,6 +256,10 @@ io.on("connection", (socket) => {
                     }
                   }
                   roomInfo.users.forEach((Id) => {
+                    // 다른사람들에게 나간 사람의 socketid를 전달
+                    io.to(roomInfo.IdToRTCId[Id]).emit("someoneLeft", {
+                      senderId: data.Id,
+                    });
                     removingStream.getTracks().forEach((track) => {
                       let removingTrackId = track.id;
                       console.log(removingTrackId);
@@ -272,10 +276,6 @@ io.on("connection", (socket) => {
                           removingSender
                         );
                       }
-                    });
-                    // 다른사람들에게 나간 사람의 socketid를 전달
-                    io.to(roomInfo.IdToRTCId[Id]).emit("someoneLeft", {
-                      senderId: data.Id,
                     });
                   });
                 }
