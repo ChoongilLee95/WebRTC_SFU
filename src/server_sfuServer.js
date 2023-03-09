@@ -36,8 +36,8 @@ const RTC_config = {
     },
     {
       urls: [
-        "stun:43.201.148.88:3478",
-        "turn:43.201.148.88:3478?transport=udp",
+        "stun:13.125.24.158:3478",
+        "turn:13.125.24.158:3478?transport=udp",
       ],
       username: "choongil",
       credential: "Lee",
