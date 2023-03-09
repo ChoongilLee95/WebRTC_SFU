@@ -10,7 +10,7 @@ const io = new socketio.Server(httpServer, {
   path: "/sfusocket",
   credentials: true,
   cors: {
-    origin: "https://chjungle.shop",
+    origin: "https://onem1nutemem0ry.store",
     credentials: true,
     allowedHeaders: ["my-custom-header"],
     methods: ["GET", "POST", "OPTIONS"],
