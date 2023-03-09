@@ -312,7 +312,6 @@ io.on("connection", (socket) => {
       console.log(error);
     }
   });
-
   // 클라이언트가 video 태그와 스트림 id를 매핑하여 새로운 스트림을 받을 준비가 끝났을 때 보내는 소캣
   socket.on("readyForGettingStream", (data) => {
     try {
