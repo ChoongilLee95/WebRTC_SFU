@@ -74,7 +74,7 @@ io.on("connection", (socket) => {
       if (roomInfo === undefined) {
         return;
       }
-      if (roomInfo.users.indexOf(socket.name) != -1) {
+      if (roomInfo.users.includes(socket.name)) {
         for (let i = 0; i < roomInfo.users.length; i++) {
           if (roomInfo.users[i] === socket.name) {
             roomInfo.users.splice(i, 1);
@@ -207,14 +207,14 @@ io.on("connection", (socket) => {
             let removingStream;
             switch (newSendingConnection.connectionState) {
               case "disconnected":
-                console.log((data.Id = " p2p 연결이 disconnected"));
+                console.log(data.Id + " p2p 연결이 disconnected");
                 // 다른 peer들에게 연결된 stream을 제거
-                if (roomInfo.users.indexOf(data.Id) != -1) {
+                if (roomInfo.users.includes(data.Id)) {
                   console.log("disconnected 로직 실행");
                   removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
                   roomInfo.IdToStream[data.Id] = null;
                   for (let i = 0; i < roomInfo.users.length; i++) {
-                    if (roomInfo.users[i] === socket.name) {
+                    if (roomInfo.users[i] === data.Id) {
                       roomInfo.users.splice(i, 1);
                       i--;
                     }
@@ -254,12 +254,12 @@ io.on("connection", (socket) => {
               case "closed":
                 console.log(data.Id + " 의 p2p연결이 closed되었습니다");
                 // 다른 peer들에게 연결된 stream을 제거
-                if (roomInfo.users.indexOf(data.Id) != -1) {
+                if (roomInfo.users.includes(data.Id)) {
                   console.log(data.Id + " closed 로직 실행");
                   removingStream = roomInfo.IdToStream[data.Id];
                   roomInfo.IdToStream[data.Id] = null;
                   for (let i = 0; i < roomInfo.users.length; i++) {
-                    if (roomInfo.users[i] === socket.name) {
+                    if (roomInfo.users[i] === data.Id) {
                       roomInfo.users.splice(i, 1);
                       i--;
                     }
