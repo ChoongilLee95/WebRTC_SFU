@@ -97,7 +97,10 @@ io.on("connection", (socket) => {
                 return s.track != null && s.track.id === removingTrackId;
               });
               console.log("기존 연결에 트랙을 제거합니다");
-              if (roomInfo.IdToSendingConnection[Id] && removingSender) {
+              if (
+                roomInfo.IdToSendingConnection[Id] &&
+                typeof removingSender == "object"
+              ) {
                 roomInfo.IdToSendingConnection[Id].removeTrack(removingSender);
               }
             } catch (e) {
@@ -232,7 +235,10 @@ io.on("connection", (socket) => {
                         );
                       });
                       // 트랙을 제거
-                      if (roomInfo.IdToSendingConnection[Id]) {
+                      if (
+                        roomInfo.IdToSendingConnection[Id] &&
+                        typeof removingSender == "object"
+                      ) {
                         roomInfo.IdToSendingConnection[Id].removeTrack(
                           removingSender
                         );
@@ -274,7 +280,10 @@ io.on("connection", (socket) => {
                         );
                       });
                       // 기존 연결들에서 트랙을 제거
-                      if (roomInfo.IdToSendingConnection[Id]) {
+                      if (
+                        roomInfo.IdToSendingConnection[Id] &&
+                        typeof removingSender == "object"
+                      ) {
                         roomInfo.IdToSendingConnection[Id].removeTrack(
                           removingSender
                         );
