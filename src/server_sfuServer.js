@@ -70,6 +70,12 @@ io.on("connection", (socket) => {
       // 연결이 끊어졌을 때
       // 다른 연결들에 전송되고있는 스트림 제거
       console.log(socket.name + "소캣이 끊겼어요");
+      if (
+        roomToUsers[socket.roomId].IdToState[socket.name] === "disconnected"
+      ) {
+        return;
+      }
+      roomToUsers[socket.roomId].IdToState[socket.name] = "disconnected";
       let roomInfo = roomToUsers[socketIdToRoomId[socket.name]];
       if (roomInfo === undefined) {
         return;
@@ -134,6 +140,7 @@ io.on("connection", (socket) => {
           IdToStream: {},
           IdToSender: {},
           IdToRTCId: {},
+          IdToState: {},
         };
         roomToUsers[data.roomId] = roomInfo;
       } else {
@@ -154,6 +161,7 @@ io.on("connection", (socket) => {
           return;
         }
         console.log(connection.streams[0].getTracks());
+        roomInfo.IdToState[data.Id] = "connected";
         roomInfo.users.push(data.Id);
         roomInfo.IdToRTCId[data.Id] = data.RTCId;
         console.log("connection for" + data.Id + " is finished");
@@ -209,7 +217,8 @@ io.on("connection", (socket) => {
               case "disconnected":
                 console.log(data.Id + " p2p 연결이 disconnected");
                 // 다른 peer들에게 연결된 stream을 제거
-                if (roomInfo.users.includes(data.Id)) {
+                if (roomInfo.IdToState[data.Id] === "connected") {
+                  roomInfo.IdToState[data.Id] = "disconnected";
                   console.log("disconnected 로직 실행");
                   removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
                   roomInfo.IdToStream[data.Id] = null;
@@ -254,7 +263,8 @@ io.on("connection", (socket) => {
               case "closed":
                 console.log(data.Id + " 의 p2p연결이 closed되었습니다");
                 // 다른 peer들에게 연결된 stream을 제거
-                if (roomInfo.users.includes(data.Id)) {
+                if (roomInfo.IdToState[data.Id] === "connected") {
+                  roomInfo.IdToState[data.Id] = "disconnected";
                   console.log(data.Id + " closed 로직 실행");
                   removingStream = roomInfo.IdToStream[data.Id];
                   roomInfo.IdToStream[data.Id] = null;
