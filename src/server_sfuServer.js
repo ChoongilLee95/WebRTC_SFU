@@ -74,7 +74,7 @@ io.on("connection", (socket) => {
       if (roomInfo === undefined) {
         return;
       }
-      if (roomInfo.users.indexOf(data.Id) != -1) {
+      if (roomInfo.users.indexOf(socket.name) != -1) {
         for (let i = 0; i < roomInfo.users.length; i++) {
           if (roomInfo.users[i] === socket.name) {
             roomInfo.users.splice(i, 1);
