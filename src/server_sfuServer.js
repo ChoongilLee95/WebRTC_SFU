@@ -69,37 +69,36 @@ io.on("connection", (socket) => {
       }
       // 연결이 끊어졌을 때
       // 다른 연결들에 전송되고있는 스트림 제거
-      console.log(socket.name + " 나갔어요~");
-      let roominfo = roomToUsers[socketIdToRoomId[socket.name]];
-      if (roominfo === undefined) {
+      console.log(socket.name + "소캣이 끊겼어요");
+      let roomInfo = roomToUsers[socketIdToRoomId[socket.name]];
+      if (roomInfo === undefined) {
         return;
       }
-      let removingStream = roominfo.IdToStream[socket.name];
-
-      for (let i = 0; i < roominfo.users.length; i++) {
-        if (roominfo.users[i] === socket.name) {
-          roominfo.users.splice(i, 1);
-          i--;
+      if (roomInfo.users.indexOf(data.Id) != -1) {
+        for (let i = 0; i < roomInfo.users.length; i++) {
+          if (roomInfo.users[i] === socket.name) {
+            roomInfo.users.splice(i, 1);
+            i--;
+          }
         }
-      }
-      if (removingStream) {
-        roominfo.IdToStream[socket.name] = null;
-        roominfo.users.forEach((Id) => {
-          io.to(roominfo.IdToRTCId[Id]).emit("someoneLeft", {
+        let removingStream = roomInfo.IdToStream[socket.name];
+        roomInfo.IdToStream[socket.name] = null;
+        roomInfo.users.forEach((Id) => {
+          io.to(roomInfo.IdToRTCId[Id]).emit("someoneLeft", {
             senderId: socket.name,
           });
           removingStream.getTracks().forEach((track) => {
             try {
               let removingTrackId = track.id;
               console.log(removingTrackId);
-              let removingSender = roominfo.IdToSendingConnection[
+              let removingSender = roomInfo.IdToSendingConnection[
                 Id
               ].getSenders().find((s) => {
                 return s.track != null && s.track.id === removingTrackId;
               });
               console.log("기존 연결에 트랙을 제거합니다");
-              if (roominfo.IdToSendingConnection[Id] && removingSender) {
-                roominfo.IdToSendingConnection[Id].removeTrack(removingSender);
+              if (roomInfo.IdToSendingConnection[Id] && removingSender) {
+                roomInfo.IdToSendingConnection[Id].removeTrack(removingSender);
               }
             } catch (e) {
               console.log(e);
@@ -108,10 +107,10 @@ io.on("connection", (socket) => {
         });
       }
       // 연결 끊기
-      roominfo.IdToSendingConnection[socket.name] = null;
+      roomInfo.IdToSendingConnection[socket.name] = null;
       // 방 내부 데이터에서 제거하기
-      roominfo.IdToSender[socket.name] = null;
-      roominfo.IdToSendingConnection[socket.name] = null;
+      roomInfo.IdToSender[socket.name] = null;
+      roomInfo.IdToSendingConnection[socket.name] = null;
     } catch (e) {
       console.log(e);
     }
@@ -205,9 +204,11 @@ io.on("connection", (socket) => {
             let removingStream;
             switch (newSendingConnection.connectionState) {
               case "disconnected":
+                console.log((data.Id = " p2p 연결이 disconnected"));
                 // 다른 peer들에게 연결된 stream을 제거
-                removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
-                if (removingStream) {
+                if (roomInfo.users.indexOf(data.Id) != -1) {
+                  console.log("disconnected 로직 실행");
+                  removingStream = roomToUsers[data.roomId].IdToStream[data.Id];
                   roomInfo.IdToStream[data.Id] = null;
                   for (let i = 0; i < roomInfo.users.length; i++) {
                     if (roomInfo.users[i] === socket.name) {
@@ -245,9 +246,11 @@ io.on("connection", (socket) => {
                 newSendingConnection.close();
                 break;
               case "closed":
+                console.log(data.Id + " 의 p2p연결이 closed되었습니다");
                 // 다른 peer들에게 연결된 stream을 제거
-                removingStream = roomInfo.IdToStream[data.Id];
-                if (removingStream) {
+                if (roomInfo.users.indexOf(data.Id) != -1) {
+                  console.log(data.Id + " closed 로직 실행");
+                  removingStream = roomInfo.IdToStream[data.Id];
                   roomInfo.IdToStream[data.Id] = null;
                   for (let i = 0; i < roomInfo.users.length; i++) {
                     if (roomInfo.users[i] === socket.name) {
