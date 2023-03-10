@@ -76,7 +76,8 @@ io.on("connection", (socket) => {
       ) {
         return;
       }
-      roomToUsers[socket.roomId].IdToState[socket.name] = "disconnected";
+      roomToUsers[socketIdToRoomId[socket.name]].IdToState[socket.name] =
+        "disconnected";
       let roomInfo = roomToUsers[socketIdToRoomId[socket.name]];
       if (roomInfo === undefined) {
         return;
