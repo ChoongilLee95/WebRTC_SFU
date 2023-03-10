@@ -353,7 +353,7 @@ io.on("connection", (socket) => {
           data.Id
         ) &&
         roomToUsers[data.roomId].IdToSendingConnection[data.Id]
-          .remoteDescription != null
+          ?.remoteDescription != null
       ) {
         roomToUsers[data.roomId].IdToSendingConnection[data.Id].addIceCandidate(
           data.ice
