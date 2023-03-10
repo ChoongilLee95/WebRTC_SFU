@@ -71,7 +71,8 @@ io.on("connection", (socket) => {
       // 다른 연결들에 전송되고있는 스트림 제거
       console.log(socket.name + "소캣이 끊겼어요");
       if (
-        roomToUsers[socket.roomId].IdToState[socket.name] === "disconnected"
+        roomToUsers[socketIdToRoomId[socket.name]].IdToState[socket.name] ===
+        "disconnected"
       ) {
         return;
       }
