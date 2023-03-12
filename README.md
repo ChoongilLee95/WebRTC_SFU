@@ -1,17 +1,16 @@
 # WebRTC SFU 구현
 
+- 자세한 구현과정과 정리된 내용은 아래 링크의 제 notion에 정리해두었습니다.
+  https://www.notion.so/340e9cdd0ecc4a50be6c88df40516c21?v=ecd486fa08744363ad4fac38716c7866&pvs=4
+
+## 파일 설명
+
 - src/server_basicMesh.js : 간단한 1:1 WebRTC 화상통화용 서버 파일입니다
 - src/server_manyconnections.js : millo님의 블로그 글을 참고하여 구현한 다중 webRTC SFU 미디어 서버 파일입니다.
   - 단방향 연결의 수가 너무 많아져서 각 연결이 불안정해지는 문제가 있습니다.
   - 참고링크 : https://millo-l.github.io/WebRTC-%EA%B5%AC%ED%98%84%ED%95%98%EA%B8%B0-1-N-SFU/
 - src/server_sfuServer.js : 위의 SFU 구현방식을 바꿔서 client들과 server간의 연결의 수를 늘리는 방식이 아니라 하나의 연결에 다른 사람들의 stream을 추가하는 방식으로 구현했습니다
   - 연결이 안정적이며 프로젝트에서 사용한 서버 파일입니다.
-- 시작을 위한 커멘드라인 명령어는 다음과 같습니다
-
-  `$ npm run dev`
-
-- 자세한 구현과정과 정리된 내용은 아래 링크의 제 notion에 정리해두었습니다.
-  https://www.notion.so/340e9cdd0ecc4a50be6c88df40516c21?v=ecd486fa08744363ad4fac38716c7866&pvs=4
 
 ## 주의사항
 
@@ -26,13 +25,15 @@
   - coturn을 이용하여 turn 서버를 구축해주세요.(과정이 간단하니까 후딱해놓는게 마음 편합니다.)
   - 참조 링크 : https://my-first-programming.tistory.com/entry/AWS-EC2-COTURN-%EC%84%9C%EB%B2%84
 
-## main branch
+## 브랜치 설명
+
+### main branch
 
 - localhost용 브랜치 입니다.
 - local에서 간단하게 테스트 하기 위해서 사용하기 좋습니다.
 - ngrok을 이용하여 터널을 열어주면 다른 host도 참여 가능합니다.
 
-## ForProjectServer branch
+### ForProjectServer branch
 
 - 다른 프로젝트에 적용할 수 있는 SFU용 Media 서버용 브랜치 입니다.
 - 웹캠과 마이크와 같이 유저의 미디어 기기에 접근하기 위해서는 접근하는 웹사이트의 도메인이 https로 시작해야 합니다
@@ -43,5 +44,11 @@
   - cors 옵션에 credential을 true로 하면 cookie데이터도 같이 서버로 전해지게 되는데 이때 cors의 origin설정을 "\*"(wildcard라고 부름)로 해놓았다면 cors에러가 나게 됩니다. 꼭 허용할 URL을 특정해주세요.
   - https 보안 인증을 받은 도메인에서 http 도메인에 socket 연결을 할 수 없습니다.
     - nginx로 보안 인증을 받으셨다면 SFU 서버도 해당 리버스 프록시 뒤에 위치시키면 문제가 해결됩니다.
-- 미디어서버를 이용한 프로젝트 github : https://github.com/JaeHyeongPark/namanmoo/tree/feature/forServer
+- 미디어서버를 이용한 프로젝트 github : https://github.com/JaeHyeongPark/namanmoo/tree/server
 - 위 github에서 namanmoo/client/src/room/components/WebRTC/WebRTC.js 파일을 참고하시면 클라이언트와 서버가 어떻게 연결되었는지 알 수 있습니다.
+
+## 시작하기
+
+- 시작을 위한 커멘드라인 명령어는 다음과 같습니다
+
+  `$ npm run dev`
