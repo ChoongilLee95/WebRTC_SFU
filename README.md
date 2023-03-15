@@ -10,7 +10,7 @@
   - 단방향 연결의 수가 너무 많아져서 각 연결이 불안정해지는 문제가 있습니다.
   - 참고링크 : https://millo-l.github.io/WebRTC-%EA%B5%AC%ED%98%84%ED%95%98%EA%B8%B0-1-N-SFU/
 - src/server_sfuServer.js : 위의 SFU 구현방식을 바꿔서 client들과 server간의 연결의 수를 늘리는 방식이 아니라 하나의 연결에 다른 사람들의 stream을 추가하는 방식으로 구현했습니다
-  - 연결이 안정적이며 프로젝트에서 사용한 서버 파일입니다.
+  - 연결이 안정적이며 프로젝트에서 사용한 최종 서버 파일입니다.
 
 ## 주의사항
 
@@ -44,8 +44,8 @@
   - cors 옵션에 credential을 true로 하면 cookie데이터도 같이 서버로 전해지게 되는데 이때 cors의 origin설정을 "\*"(wildcard라고 부름)로 해놓았다면 cors에러가 나게 됩니다. 꼭 허용할 URL을 특정해주세요.
   - https 보안 인증을 받은 도메인에서 http 도메인에 socket 연결을 할 수 없습니다.
     - nginx로 보안 인증을 받으셨다면 SFU 서버도 해당 리버스 프록시 뒤에 위치시키면 문제가 해결됩니다.
-- 미디어서버를 이용한 프로젝트 github : https://github.com/JaeHyeongPark/namanmoo/tree/server
-- 위 github에서 namanmoo/client/src/room/components/WebRTC/WebRTC.js 파일을 참고하시면 클라이언트와 서버가 어떻게 연결되었는지 알 수 있습니다.
+- 미디어서버를 이용한 프로젝트 github : https://github.com/ChoongilLee95/OneMinuteMemory
+- 위 repository에서 namanmoo/client/src/room/components/WebRTC/WebRTC.js 파일은 클라이언트의 webRTC연결을 위한 코드가 있습니다. 이 코드와 src/server_sfuServer.js의 코드를 같이 보시면 클라이언트와 서버가 어떻게 연결되었는지 알 수 있습니다.
 
 ## 시작하기
 
