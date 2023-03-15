@@ -1,7 +1,7 @@
 # WebRTC SFU 구현
 
 - 자세한 구현과정과 정리된 내용은 아래 링크의 제 notion에 정리해두었습니다.
-  https://www.notion.so/340e9cdd0ecc4a50be6c88df40516c21?v=ecd486fa08744363ad4fac38716c7866&pvs=4
+  https://early-profit-078.notion.site/WebRTC-SFU-f1e14e96c09a4e128e0615a84f34e088
 
 ## 파일 설명
 
